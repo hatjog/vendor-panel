@@ -24,6 +24,18 @@ for <a href="https://github.com/mercurjs/mercur">Mercur</a> - Open Source Market
 
 The Vendor Panel is a pivotal component of the MercurJS ecosystem, designed to provide vendors with an intuitive interface to oversee their marketplace activities. 
 
+## GP monorepo (dev note)
+
+In this monorepo, the bundled Medusa backend doesn’t include Mercur marketplace modules,
+so it may not expose the full Vendor API surface out of the box.
+
+For local dev, the backend provides a small shim layer so the Vendor Panel can stay upstream-like:
+
+- Seller auth endpoints: `/auth/seller/*` (proxied to Medusa user auth).
+- Vendor API endpoints: `/vendor/*` (proxied/shimmed onto available admin endpoints).
+
+Implementation (dev shims): [../backend/src/api/middlewares.ts](../backend/src/api/middlewares.ts)
+
 - Product Management: Add, edit, and organize products with ease.
 - Order Tracking: Monitor order statuses and manage fulfillment processes.
 - Store Customization: Update vendor store details

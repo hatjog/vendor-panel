@@ -3,8 +3,6 @@ import Medusa from '@medusajs/js-sdk';
 export const backendUrl = __BACKEND_URL__ ?? '/';
 export const publishableApiKey = __PUBLISHABLE_API_KEY__ ?? '';
 
-const token = window.localStorage.getItem('medusa_auth_token') || '';
-
 const decodeJwt = (token: string) => {
   try {
     const payload = token.split('.')[1];
@@ -38,11 +36,13 @@ export const importProductsQuery = async (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
 
+  const bearer = window.localStorage.getItem('medusa_auth_token') || '';
+
   return await fetch(`${backendUrl}/vendor/products/import`, {
     method: 'POST',
     body: formData,
     headers: {
-      authorization: `Bearer ${token}`,
+      authorization: `Bearer ${bearer}`,
       'x-publishable-api-key': publishableApiKey
     }
   })
@@ -57,11 +57,13 @@ export const uploadFilesQuery = async (files: any[]) => {
     formData.append('files', file);
   }
 
+  const bearer = window.localStorage.getItem('medusa_auth_token') || '';
+
   return await fetch(`${backendUrl}/vendor/uploads`, {
     method: 'POST',
     body: formData,
     headers: {
-      authorization: `Bearer ${token}`,
+      authorization: `Bearer ${bearer}`,
       'x-publishable-api-key': publishableApiKey
     }
   })
@@ -77,7 +79,7 @@ export const fetchQuery = async (
     query,
     headers
   }: {
-    method: 'GET' | 'POST' | 'DELETE';
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
     body?: object;
     query?: Record<string, string | number | object>;
     headers?: { [key: string]: string };
@@ -105,6 +107,7 @@ export const fetchQuery = async (
     }
     return acc;
   }, '');
+
   const response = await fetch(`${backendUrl}${url}${params && `?${params}`}`, {
     method: method,
     headers: {
@@ -120,7 +123,7 @@ export const fetchQuery = async (
     const errorData = await response.json();
 
     if (response.status === 401) {
-      if (isTokenExpired(token)) {
+      if (isTokenExpired(bearer)) {
         localStorage.removeItem('medusa_auth_token');
         window.location.href = '/login?reason=Unauthorized';
         return;
