@@ -1,5 +1,20 @@
 {
   "$schema": "./$schema.json",
+  "vendorPanel": {
+    "lockedField": {
+      "groupHeader": "{{name}} (managed by administrator)",
+      "tooltip": "This field is managed by the bonbeauty team. Email us to request a change — we reply within 24h.",
+      "tooltipEmail": "vendor@bonbeauty.pl",
+      "ariaLabel": "Locked group: {{name}}",
+      "groups": {
+        "basicInfo": "Basic information",
+        "gallery": "Gallery",
+        "locationsAndContacts": "Locations and contacts",
+        "socialMedia": "Social media",
+        "seo": "SEO"
+      }
+    }
+  },
   "general": {
     "ascending": "Ascending",
     "descending": "Descending",

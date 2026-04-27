@@ -5,6 +5,68 @@
     "$schema": {
       "type": "string"
     },
+    "vendorPanel": {
+      "type": "object",
+      "properties": {
+        "lockedField": {
+          "type": "object",
+          "properties": {
+            "groupHeader": {
+              "type": "string"
+            },
+            "tooltip": {
+              "type": "string"
+            },
+            "tooltipEmail": {
+              "type": "string"
+            },
+            "ariaLabel": {
+              "type": "string"
+            },
+            "groups": {
+              "type": "object",
+              "properties": {
+                "basicInfo": {
+                  "type": "string"
+                },
+                "gallery": {
+                  "type": "string"
+                },
+                "locationsAndContacts": {
+                  "type": "string"
+                },
+                "socialMedia": {
+                  "type": "string"
+                },
+                "seo": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "basicInfo",
+                "gallery",
+                "locationsAndContacts",
+                "socialMedia",
+                "seo"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "groupHeader",
+            "tooltip",
+            "tooltipEmail",
+            "ariaLabel",
+            "groups"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "lockedField"
+      ],
+      "additionalProperties": false
+    },
     "general": {
       "type": "object",
       "properties": {
@@ -11246,6 +11308,7 @@
   },
   "required": [
     "$schema",
+    "vendorPanel",
     "general",
     "json",
     "metadata",
