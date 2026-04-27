@@ -1,5 +1,20 @@
 {
   "$schema": "./$schema.json",
+  "vendorPanel": {
+    "lockedField": {
+      "groupHeader": "{{name}} (керується адміністратором)",
+      "tooltip": "Це поле керує команда bonbeauty. Напишіть нам — відповімо протягом 24 годин.",
+      "tooltipEmail": "vendor@bonbeauty.pl",
+      "ariaLabel": "Заблокована група: {{name}}",
+      "groups": {
+        "basicInfo": "Основна інформація",
+        "gallery": "Галерея",
+        "locationsAndContacts": "Локації та контакти",
+        "socialMedia": "Соціальні мережі",
+        "seo": "SEO"
+      }
+    }
+  },
   "general": {
     "ascending": "По зростанню",
     "descending": "По спаданню",
