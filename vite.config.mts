@@ -42,6 +42,19 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       open: true,
+      // Story v160-7-8: CSP headers — defense-in-depth XSS prevention (NFR-SEC-3).
+      headers: {
+        "Content-Security-Policy":
+          "default-src 'self'; " +
+          "script-src 'self' 'unsafe-eval'; " +
+          "style-src 'self' 'unsafe-inline'; " +
+          "img-src 'self' data: https:; " +
+          "font-src 'self' data:; " +
+          `connect-src 'self' ${BACKEND_URL} ws: wss:; ` +
+          "frame-ancestors 'none'; " +
+          "form-action 'self'; " +
+          "base-uri 'self'",
+      },
     },
     optimizeDeps: {
       entries: [],
