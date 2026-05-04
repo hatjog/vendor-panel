@@ -1,95 +1,119 @@
 /**
- * Story v160-7-8: HTML sanitizer for vendor-panel.
+ * HTML sanitizer for vendor-panel — Story v160-cleanup-4.
  *
- * Mirrors admin-panel + storefront sanitize contract (Story 4.7 baseline +
- * Sprint 4 Wave 15 extension). Per T2.1 decision: per-repo copy (no monorepo
- * package overhead in v1.6.0).
+ * last-synced-from: e4b400a60e7b5866794b35b249c62b3a895ce9c9 (packages/sanitize/src/index.ts)
  *
- * Wave 15 ships minimal regex-based sanitizer to avoid lockfile drift.
- * Sprint 5 polish: drop in isomorphic-dompurify for full DOM-aware parsing.
+ * CANONICAL SOURCE: packages/sanitize/src/index.ts in the GP superproject.
+ * This is a sub-repo copy (cross-repo workspace links are not viable for hatjog/* forks).
+ * See packages/sanitize/README.md for the sync policy.
+ *
+ * Closes:
+ *   CRIT-7.3  entity-encoded XSS bypass (entity pre-decode pass)
+ *   CRIT-7.3  mXSS HTML comment bypass (ALLOW_COMMENTS:false)
+ *   CRIT-7.3  formaction on anchor (FORBID_ATTR includes 'formaction')
+ *   HIGH-4.1  title= on <a> URL-shadow phishing (per-tag afterSanitizeAttributes hook)
+ *   HIGH-4.1  over-permissive ALLOWED_URI_REGEXP (tightened to docstring contract)
+ *
+ * Version: v1.6.0-cleanup4-dompurify
  */
 
-const ALLOWED_TAGS = new Set([
-  "p",
-  "br",
-  "strong",
-  "em",
-  "u",
-  "ol",
-  "ul",
-  "li",
-  "a",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "blockquote",
-  "code",
-  "pre",
-])
+import DOMPurify from 'isomorphic-dompurify'
+import he from 'he'
 
-const ALLOWED_PROTOCOLS = ["http://", "https://", "mailto:"]
+export const SANITIZE_VERSION = 'v1.6.0-cleanup4-dompurify'
 
-const STRIPPED_TAG_PATTERNS = [
-  /<script\b[^>]*>[\s\S]*?<\/script\s*>/gi,
-  /<script\b[^>]*\/?>/gi,
-  /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi,
-  /<iframe\b[^>]*>[\s\S]*?<\/iframe\s*>/gi,
-  /<iframe\b[^>]*\/?>/gi,
-  /<object\b[^>]*>[\s\S]*?<\/object\s*>/gi,
-  /<embed\b[^>]*\/?>/gi,
-  /<link\b[^>]*\/?>/gi,
-  /<meta\b[^>]*\/?>/gi,
-  /<base\b[^>]*\/?>/gi,
-  /<form\b[^>]*>[\s\S]*?<\/form\s*>/gi,
-  /<input\b[^>]*\/?>/gi,
-  /<button\b[^>]*>[\s\S]*?<\/button\s*>/gi,
-  /<svg\b[^>]*>[\s\S]*?<\/svg\s*>/gi,
-  /<math\b[^>]*>[\s\S]*?<\/math\s*>/gi,
+export type SanitizeProfile =
+  | 'vendor-description'
+  | 'admin-note'
+  | 'inline'
+  | 'strict'
+
+const BASE_ALLOWED_TAGS = [
+  'p', 'br', 'strong', 'em', 'b', 'i', 'u',
+  'ul', 'ol', 'li',
+  'a',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'blockquote', 'code', 'pre',
+  'span',
 ]
 
-const ON_HANDLER_PATTERN = /\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi
-const STYLE_ATTR_PATTERN = /\sstyle\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi
-const SRCSET_ATTR_PATTERN = /\ssrcset\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi
-const DATA_ATTR_PATTERN = /\sdata-[a-z][\w-]*\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi
+const INLINE_ALLOWED_TAGS = ['strong', 'em', 'b', 'i', 'u', 'span', 'a', 'code']
 
-const TAG_PATTERN = /<\/?([a-z][\w-]*)\b[^>]*>/gi
+const FORBID_TAGS = [
+  'script', 'iframe', 'object', 'embed',
+  'form', 'input', 'button', 'textarea', 'select',
+  'style', 'link', 'meta', 'base',
+  'svg', 'math',
+  'canvas', 'video', 'audio', 'source', 'track',
+]
 
-function stripDangerousProtocols(html: string): string {
-  return html.replace(
-    /\shref\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi,
-    (_match, value: string) => {
-      const trimmed = value.replace(/^["']|["']$/g, "").trim().toLowerCase()
-      const safe = ALLOWED_PROTOCOLS.some((p) => trimmed.startsWith(p))
-      if (safe) {
-        return ` href="${value.replace(/^["']|["']$/g, "")}" rel="noopener noreferrer nofollow" target="_blank"`
+const FORBID_ATTR = ['style', 'srcset', 'formaction', 'action', 'ping']
+
+/**
+ * Permitted URI schemes for href.
+ * Rejected: javascript:, data:, vbscript:, file:, blob:
+ */
+export const ALLOWED_URI_REGEXP =
+  /^(?:(?:https?|mailto|tel):|\/|[^:]*$|#)/i
+
+let hooksInstalled = false
+
+function ensureHooks(): void {
+  if (hooksInstalled) return
+  DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
+    if (node.tagName === 'A' && node.hasAttribute('href')) {
+      node.setAttribute('rel', 'noopener noreferrer')
+      const allowed = new Set(['href', 'rel', 'target'])
+      for (const attr of Array.from(node.attributes)) {
+        if (!allowed.has(attr.name)) {
+          node.removeAttribute(attr.name)
+        }
       }
-      return ' href="#"'
-    },
-  )
-}
-
-export function sanitizeHtml(dirty: string): string {
-  if (!dirty) return ""
-
-  let out = dirty
-
-  for (const pat of STRIPPED_TAG_PATTERNS) {
-    out = out.replace(pat, "")
-  }
-
-  out = out.replace(ON_HANDLER_PATTERN, "")
-  out = out.replace(STYLE_ATTR_PATTERN, "")
-  out = out.replace(SRCSET_ATTR_PATTERN, "")
-  out = out.replace(DATA_ATTR_PATTERN, "")
-
-  out = stripDangerousProtocols(out)
-
-  out = out.replace(TAG_PATTERN, (match, tagName: string) => {
-    return ALLOWED_TAGS.has(tagName.toLowerCase()) ? match : ""
+    }
   })
-
-  return out
+  hooksInstalled = true
 }
 
-export const SANITIZE_VERSION = "v1.6.0-7.8-regex-baseline"
+// DOMPurify@3.4 Config type doesn't include ALLOW_COMMENTS; cast to bypass TS2353.
+// DOMPurify strips HTML comments by default in JSDOM/Node context.
+type DPConfig = Parameters<typeof DOMPurify.sanitize>[1]
+
+function buildConfig(profile: SanitizeProfile): DPConfig {
+  if (profile === 'strict') {
+    return {
+      ALLOWED_TAGS: [],
+      ALLOWED_ATTR: [],
+      FORBID_TAGS,
+      FORBID_ATTR,
+      ALLOW_COMMENTS: false,
+      RETURN_DOM: false,
+      RETURN_DOM_FRAGMENT: false,
+    } as DPConfig
+  }
+  const allowedTags = profile === 'inline' ? INLINE_ALLOWED_TAGS : BASE_ALLOWED_TAGS
+  return {
+    ALLOWED_TAGS: allowedTags,
+    ALLOWED_ATTR: ['class', 'rel', 'target', 'href', 'src', 'alt', 'width', 'height', 'cite'],
+    FORBID_TAGS,
+    FORBID_ATTR,
+    ALLOWED_URI_REGEXP,
+    ALLOW_COMMENTS: false,
+    ALLOW_UNKNOWN_PROTOCOLS: false,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+  } as DPConfig
+}
+
+/**
+ * Sanitize untrusted HTML for safe React DOM injection.
+ * Steps: null guard → entity decode (he) → DOMPurify + per-tag hook.
+ */
+export function sanitizeHtml(
+  dirty: string | null | undefined,
+  profile: SanitizeProfile = 'vendor-description',
+): string {
+  if (dirty === null || dirty === undefined || dirty === '') return ''
+  ensureHooks()
+  const decoded = he.decode(dirty)
+  return DOMPurify.sanitize(decoded, buildConfig(profile)) as string
+}
