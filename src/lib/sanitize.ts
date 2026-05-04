@@ -74,7 +74,11 @@ function ensureHooks(): void {
   hooksInstalled = true
 }
 
-function buildConfig(profile: SanitizeProfile): Parameters<typeof DOMPurify.sanitize>[1] {
+// DOMPurify@3.4 Config type doesn't include ALLOW_COMMENTS; cast to bypass TS2353.
+// DOMPurify strips HTML comments by default in JSDOM/Node context.
+type DPConfig = Parameters<typeof DOMPurify.sanitize>[1]
+
+function buildConfig(profile: SanitizeProfile): DPConfig {
   if (profile === 'strict') {
     return {
       ALLOWED_TAGS: [],
@@ -84,7 +88,7 @@ function buildConfig(profile: SanitizeProfile): Parameters<typeof DOMPurify.sani
       ALLOW_COMMENTS: false,
       RETURN_DOM: false,
       RETURN_DOM_FRAGMENT: false,
-    }
+    } as DPConfig
   }
   const allowedTags = profile === 'inline' ? INLINE_ALLOWED_TAGS : BASE_ALLOWED_TAGS
   return {
@@ -97,7 +101,7 @@ function buildConfig(profile: SanitizeProfile): Parameters<typeof DOMPurify.sani
     ALLOW_UNKNOWN_PROTOCOLS: false,
     RETURN_DOM: false,
     RETURN_DOM_FRAGMENT: false,
-  }
+  } as DPConfig
 }
 
 /**
