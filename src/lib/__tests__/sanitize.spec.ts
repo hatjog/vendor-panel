@@ -90,8 +90,8 @@ describe("sanitize (vendor-panel) — bypass fixture tests", () => {
   })
 
   // AC4 SANITIZE_VERSION
-  it("exports SANITIZE_VERSION with dompurify marker", () => {
-    expect(SANITIZE_VERSION).toContain("cleanup4-dompurify")
+  it("exports SANITIZE_VERSION with 15b-hardened marker", () => {
+    expect(SANITIZE_VERSION).toContain("15b-hardened")
   })
 
   // Null/empty guard
