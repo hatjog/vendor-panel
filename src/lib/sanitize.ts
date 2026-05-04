@@ -1,119 +1,224 @@
+// @last-synced-from: fd878d80a8388690b66c99d4c48689cecb528f37 (packages/sanitize/src/index.ts SANITIZE_VERSION=v1.6.0-15b-hardened)
 /**
- * HTML sanitizer for vendor-panel — Story v160-cleanup-4.
+ * @gp/sanitize — Canonical hardened HTML sanitizer for GP panels.
  *
- * last-synced-from: e4b400a60e7b5866794b35b249c62b3a895ce9c9 (packages/sanitize/src/index.ts)
+ * cleanup-15b: scheme-anchored URI allowlist + per-tag attr enforcement +
+ * entity pre-decode (mXSS closure) + HTML comment stripping.
  *
- * CANONICAL SOURCE: packages/sanitize/src/index.ts in the GP superproject.
- * This is a sub-repo copy (cross-repo workspace links are not viable for hatjog/* forks).
- * See packages/sanitize/README.md for the sync policy.
+ * SANITIZE_VERSION identifies this exact build; panel copies carry a
+ * `// @last-synced-from: <super-sha>` header that must match.
  *
- * Closes:
- *   CRIT-7.3  entity-encoded XSS bypass (entity pre-decode pass)
- *   CRIT-7.3  mXSS HTML comment bypass (ALLOW_COMMENTS:false)
- *   CRIT-7.3  formaction on anchor (FORBID_ATTR includes 'formaction')
- *   HIGH-4.1  title= on <a> URL-shadow phishing (per-tag afterSanitizeAttributes hook)
- *   HIGH-4.1  over-permissive ALLOWED_URI_REGEXP (tightened to docstring contract)
+ * Trust boundary (AR50 + NFR-SEC-3):
+ *   Backend stores raw HTML for audit fidelity; sanitization is enforced
+ *   at render time in each panel. This module is the single canonical source.
  *
- * Version: v1.6.0-cleanup4-dompurify
+ * Library: `isomorphic-dompurify` — DOMPurify with JSDOM auto-bootstrap
+ *   for SSR (Next.js 15 RSC, Express, etc.). Works identically in browsers.
+ *
+ * @see https://github.com/cure53/DOMPurify
+ * @see https://owasp.org/www-project-top-ten/2017/A7_2017-Cross-Site_Scripting_(XSS)
  */
 
 import DOMPurify from 'isomorphic-dompurify'
 import he from 'he'
 
-export const SANITIZE_VERSION = 'v1.6.0-cleanup4-dompurify'
+/** Version string; panel copies must carry matching `@last-synced-from` comment. */
+export const SANITIZE_VERSION = 'v1.6.0-15b-hardened'
 
-export type SanitizeProfile =
-  | 'vendor-description'
-  | 'admin-note'
-  | 'inline'
-  | 'strict'
+/**
+ * Scheme-anchored URI allowlist.
+ *
+ * cleanup-15b hardening vs previous `[^:]*$` regex:
+ *   - Rejects schemeless payloads that contain a colon later (e.g. onclick="...")
+ *   - Rejects percent-encoded schemes like %6Aavascript:
+ *   - Rejects full-width Unicode schemes (ＪＡＶＡＳＣＲＩＰＴ:)
+ *   - Explicit deny: data:, javascript:, vbscript:, file:, blob:
+ *
+ * Allowed:
+ *   - https:  — absolute HTTPS link
+ *   - mailto: — email link
+ *   - /       — relative path (starts with slash)
+ *   - #       — in-page anchor
+ *
+ * Note: http: intentionally excluded; force HTTPS per security policy.
+ * If http: is needed for specific use cases, create a named opt-in.
+ */
+export const ALLOWED_URI_REGEXP = /^(https:|mailto:|\/|#)/i
 
-const BASE_ALLOWED_TAGS = [
-  'p', 'br', 'strong', 'em', 'b', 'i', 'u',
-  'ul', 'ol', 'li',
+/**
+ * Allowed HTML tags for user/partner content.
+ * Intentionally narrow: only formatting + structure + links.
+ * No media tags, no interactive elements, no scripting surfaces.
+ */
+export const ALLOWED_TAGS = [
+  'p',
+  'br',
+  'strong',
+  'em',
+  'b',
+  'i',
+  'u',
+  'ul',
+  'ol',
+  'li',
   'a',
-  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-  'blockquote', 'code', 'pre',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'blockquote',
+  'code',
+  'pre',
   'span',
 ]
 
-const INLINE_ALLOWED_TAGS = ['strong', 'em', 'b', 'i', 'u', 'span', 'a', 'code']
-
-const FORBID_TAGS = [
-  'script', 'iframe', 'object', 'embed',
-  'form', 'input', 'button', 'textarea', 'select',
-  'style', 'link', 'meta', 'base',
-  'svg', 'math',
-  'canvas', 'video', 'audio', 'source', 'track',
-]
-
-const FORBID_ATTR = ['style', 'srcset', 'formaction', 'action', 'ping']
+/**
+ * Global allowed attributes.
+ * Per-tag enforcement is done by afterSanitizeAttributes hook below:
+ *   <a>: href, rel, target ONLY (no title, no formaction)
+ *   <img>: src, alt, loading ONLY
+ */
+export const ALLOWED_ATTR = ['href', 'rel', 'target', 'class']
 
 /**
- * Permitted URI schemes for href.
- * Rejected: javascript:, data:, vbscript:, file:, blob:
+ * Absolutely forbidden tags — removed along with all content.
+ * These cannot appear in allowed output under any circumstances.
  */
-export const ALLOWED_URI_REGEXP =
-  /^(?:(?:https?|mailto|tel):|\/|[^:]*$|#)/i
+export const FORBID_TAGS = [
+  'script',
+  'iframe',
+  'object',
+  'embed',
+  'form',
+  'input',
+  'button',
+  'select',
+  'textarea',
+  'style',
+  'link',
+  'meta',
+  'base',
+  'svg',
+  'math',
+  'canvas',
+  'video',
+  'audio',
+  'template',
+  'slot',
+  'portal',
+]
 
-let hooksInstalled = false
+/**
+ * Forbidden attributes — stripped from any element regardless of tag.
+ * Covers event handlers pattern + dangerous attribute names.
+ */
+export const FORBID_ATTR = [
+  'style',
+  'srcset',
+  'formaction',
+  'action',
+  'ping',
+  'title',
+  'xlink:href',
+  'xmlns',
+  'xmlns:xlink',
+]
 
+let hookInstalled = false
+
+/**
+ * Install DOMPurify hooks (idempotent) for per-tag attribute enforcement.
+ *
+ * <a> tag: keeps ONLY href, rel, target — strips title, formaction, onclick, etc.
+ *   Enforces rel="noopener noreferrer" on any link with href.
+ */
 function ensureHooks(): void {
-  if (hooksInstalled) return
+  if (hookInstalled) return
+
   DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
-    if (node.tagName === 'A' && node.hasAttribute('href')) {
-      node.setAttribute('rel', 'noopener noreferrer')
-      const allowed = new Set(['href', 'rel', 'target'])
+    if (node.tagName === 'A') {
+      if (node.hasAttribute('href')) {
+        node.setAttribute('rel', 'noopener noreferrer')
+      }
+      // Strip every attribute not in strict <a> allowlist
+      const allowedAnchorAttrs = new Set(['href', 'rel', 'target'])
       for (const attr of Array.from(node.attributes)) {
-        if (!allowed.has(attr.name)) {
+        if (!allowedAnchorAttrs.has(attr.name)) {
+          node.removeAttribute(attr.name)
+        }
+      }
+    }
+
+    if (node.tagName === 'IMG') {
+      // <img> keeps src, alt, loading only
+      const allowedImgAttrs = new Set(['src', 'alt', 'loading'])
+      for (const attr of Array.from(node.attributes)) {
+        if (!allowedImgAttrs.has(attr.name)) {
           node.removeAttribute(attr.name)
         }
       }
     }
   })
-  hooksInstalled = true
-}
 
-// DOMPurify@3.4 Config type doesn't include ALLOW_COMMENTS; cast to bypass TS2353.
-// DOMPurify strips HTML comments by default in JSDOM/Node context.
-type DPConfig = Parameters<typeof DOMPurify.sanitize>[1]
+  // Strip HTML comments before parsing (mXSS via conditional comments)
+  DOMPurify.addHook('beforeSanitizeElements', (node) => {
+    if (node.nodeType === 8) {
+      // Node.COMMENT_NODE = 8
+      node.parentNode?.removeChild(node)
+    }
+  })
 
-function buildConfig(profile: SanitizeProfile): DPConfig {
-  if (profile === 'strict') {
-    return {
-      ALLOWED_TAGS: [],
-      ALLOWED_ATTR: [],
-      FORBID_TAGS,
-      FORBID_ATTR,
-      ALLOW_COMMENTS: false,
-      RETURN_DOM: false,
-      RETURN_DOM_FRAGMENT: false,
-    } as DPConfig
-  }
-  const allowedTags = profile === 'inline' ? INLINE_ALLOWED_TAGS : BASE_ALLOWED_TAGS
-  return {
-    ALLOWED_TAGS: allowedTags,
-    ALLOWED_ATTR: ['class', 'rel', 'target', 'href', 'src', 'alt', 'width', 'height', 'cite'],
-    FORBID_TAGS,
-    FORBID_ATTR,
-    ALLOWED_URI_REGEXP,
-    ALLOW_COMMENTS: false,
-    ALLOW_UNKNOWN_PROTOCOLS: false,
-    RETURN_DOM: false,
-    RETURN_DOM_FRAGMENT: false,
-  } as DPConfig
+  hookInstalled = true
 }
 
 /**
- * Sanitize untrusted HTML for safe React DOM injection.
- * Steps: null guard → entity decode (he) → DOMPurify + per-tag hook.
+ * Sanitize partner-imported / user-content HTML for safe DOM injection.
+ *
+ * Pipeline (cleanup-15b):
+ *  1. Null/empty guard
+ *  2. HTML entity pre-decode (he.decode) — closes mXSS via &lt;script&gt; encoding
+ *  3. Strip HTML comments — closes mXSS via <!--[if IE]><script>... conditional
+ *  4. DOMPurify with:
+ *     - FORBID_TAGS: removes dangerous elements entirely
+ *     - FORBID_ATTR: removes dangerous attributes globally
+ *     - ALLOWED_URI_REGEXP: scheme-anchored — rejects data:, javascript:, vbscript:,
+ *       file:, schemeless, percent-encoded, and full-width Unicode variants
+ *  5. afterSanitizeAttributes hook: per-tag strict attr enforcement
+ *
+ * @param html  Raw HTML string (or nullable) from user or partner source.
+ * @param opts  Optional override for allowed tags/attrs (advanced use only).
+ * @returns     Sanitized HTML string; safe for dangerouslySetInnerHTML / innerHTML.
  */
 export function sanitizeHtml(
-  dirty: string | null | undefined,
-  profile: SanitizeProfile = 'vendor-description',
+  html: string | null | undefined,
+  opts?: { allowedTags?: string[]; allowedAttr?: string[] },
 ): string {
-  if (dirty === null || dirty === undefined || dirty === '') return ''
+  if (html === null || html === undefined || html === '') {
+    return ''
+  }
+
   ensureHooks()
-  const decoded = he.decode(dirty)
-  return DOMPurify.sanitize(decoded, buildConfig(profile)) as string
+
+  // Step 2: Entity pre-decode (prevents &lt;script&gt;alert(1)&lt;/script&gt; bypass)
+  const decoded = he.decode(html)
+
+  // Step 3: Strip HTML comments before DOMPurify (IE conditional comment mXSS)
+  const noComments = decoded.replace(/<!--[\s\S]*?-->/g, '')
+
+  // Step 4+5: DOMPurify with hardened config
+  return DOMPurify.sanitize(noComments, {
+    ALLOWED_TAGS: opts?.allowedTags ?? ALLOWED_TAGS,
+    ALLOWED_ATTR: opts?.allowedAttr ?? ALLOWED_ATTR,
+    FORBID_TAGS,
+    FORBID_ATTR,
+    ALLOWED_URI_REGEXP,
+    ALLOW_UNKNOWN_PROTOCOLS: false,
+    FORCE_BODY: false,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+  }) as string
 }
+
+export default sanitizeHtml
