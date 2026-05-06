@@ -3,6 +3,8 @@ import { HttpTypes } from "@medusajs/types"
 import { UseMutationOptions, useMutation } from "@tanstack/react-query"
 import { fetchQuery, sdk } from "../../lib/client"
 
+const vendorAuthActorType = "member"
+
 export const useSignInWithEmailPass = (
   options?: UseMutationOptions<
     | string
@@ -14,7 +16,7 @@ export const useSignInWithEmailPass = (
   >
 ) => {
   return useMutation({
-    mutationFn: (payload) => sdk.auth.login("seller", "emailpass", payload),
+    mutationFn: (payload) => sdk.auth.login(vendorAuthActorType, "emailpass", payload),
     onSuccess: async (data, variables, context) => {
       options?.onSuccess?.(data, variables, context)
     },
@@ -33,7 +35,7 @@ export const useSignUpWithEmailPass = (
   >
 ) => {
   return useMutation({
-    mutationFn: (payload) => sdk.auth.register("seller", "emailpass", payload),
+    mutationFn: (payload) => sdk.auth.register(vendorAuthActorType, "emailpass", payload),
     onSuccess: async (_, variables) => {
       const seller = {
         name: variables.name,
@@ -59,7 +61,7 @@ export const useSignUpForInvite = (
   >
 ) => {
   return useMutation({
-    mutationFn: (payload) => sdk.auth.register("seller", "emailpass", payload),
+    mutationFn: (payload) => sdk.auth.register(vendorAuthActorType, "emailpass", payload),
     ...options,
   })
 }
@@ -69,7 +71,7 @@ export const useResetPasswordForEmailPass = (
 ) => {
   return useMutation({
     mutationFn: (payload) =>
-      sdk.auth.resetPassword("seller", "emailpass", {
+      sdk.auth.resetPassword(vendorAuthActorType, "emailpass", {
         identifier: payload.email,
       }),
     onSuccess: async (data, variables, context) => {
@@ -92,7 +94,7 @@ export const useUpdateProviderForEmailPass = (
 ) => {
   return useMutation({
     mutationFn: (payload) =>
-      sdk.auth.updateProvider("seller", "emailpass", payload, token),
+      sdk.auth.updateProvider(vendorAuthActorType, "emailpass", payload, token),
     onSuccess: async (data, variables, context) => {
       options?.onSuccess?.(data, variables, context)
     },
