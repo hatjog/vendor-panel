@@ -25,7 +25,7 @@ export const Shell = ({ children }: PropsWithChildren) => {
   const navigation = useNavigation()
   const { seller } = useMe()
 
-  const isSuspended = seller?.store_status === "SUSPENDED"
+  const isSuspended = seller?.store_status === "suspended" // Mercur 2 SellerStatus.SUSPENDED = "suspended"
 
   const loading = navigation.state === "loading"
 

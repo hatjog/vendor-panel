@@ -28,7 +28,9 @@ export interface StoreVendor {
   city?: string
   country_code?: string
   tax_id?: string
-  store_status?: "ACTIVE" | "SUSPENDED" | "INACTIVE"
+  // Mercur 2 SellerStatus values (lowercase). Mercur 1.5 used "ACTIVE"/"SUSPENDED"/"INACTIVE" (uppercase).
+  // Mapping: ACTIVE→"open", SUSPENDED→"suspended", INACTIVE→"closed" (v160-cleanup-62a).
+  store_status?: "open" | "suspended" | "closed"
 }
 
 export interface TeamMemberProps {
