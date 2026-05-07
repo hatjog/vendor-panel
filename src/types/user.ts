@@ -28,7 +28,12 @@ export interface StoreVendor {
   city?: string
   country_code?: string
   tax_id?: string
-  store_status?: "ACTIVE" | "SUSPENDED" | "INACTIVE"
+  // Mercur 2 SellerStatus values (lowercase). Mercur 1.5 used "ACTIVE"/"SUSPENDED"/"INACTIVE" (uppercase).
+  // Narrowed to the two values actually consumed by vendor-panel today (shell.tsx checks
+  // store_status === "suspended"). Review-fix VP-1 v160-cleanup-62a: dropped speculative
+  // "closed" entry (no callsite, INACTIVE→closed mapping was unjustified per OQ#2).
+  // Add new state explicitly with Mercur 2 SellerStatus key when a feature needs it.
+  store_status?: "open" | "suspended"
 }
 
 export interface TeamMemberProps {
