@@ -1,20 +1,22 @@
-import { HttpTypes } from "@medusajs/types"
 import { useMemo } from "react"
+
+import { HttpTypes } from "@medusajs/types"
+import { Text } from "@medusajs/ui"
 import { UseFormReturn, useWatch } from "react-hook-form"
 import { useTranslation } from "react-i18next"
-import { Text } from "@medusajs/ui"
+
 import {
-  DataGrid,
   createDataGridHelper,
   createDataGridPriceColumns,
+  DataGrid,
 } from "../../../../components/data-grid"
+import { createDataGridLocationStockColumns } from "../../../../components/data-grid/helpers"
 import { useRouteModal } from "../../../../components/modals/index"
 import { usePricePreferences } from "../../../../hooks/api/price-preferences"
 import { useRegions } from "../../../../hooks/api/regions.tsx"
 import { useStore } from "../../../../hooks/api/store"
 import { ProductCreateSchemaType } from "../../product-create/types"
 import { UpdateVariantStocksSchemaType } from "../../product-edit-stocks-and-prices/schema"
-import { createDataGridLocationStockColumns } from "../../../../components/data-grid/helpers"
 
 type StocksAndPricesFormProps = {
   form: UseFormReturn<UpdateVariantStocksSchemaType>
@@ -138,7 +140,6 @@ const useStocksAndPricesGridColumns = ({
         ProductCreateSchemaType
       >({
         currencies: currencies.map((c) => c.currency_code),
-        regions,
         pricePreferences,
         isReadyOnly: (context) => (context.row.original as any).isProductInfo,
         getFieldName: (context, value) => {

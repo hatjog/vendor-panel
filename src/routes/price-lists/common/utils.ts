@@ -1,16 +1,25 @@
 import { HttpTypes } from "@medusajs/types"
 import { TFunction } from "i18next"
 import { json } from "react-router-dom"
+
 import { castNumber } from "../../../lib/cast-number"
+import {
+  ExtendedAdminProduct,
+  ExtendedAdminProductVariant,
+} from "../../../types/products"
 import { PriceListDateStatus, PriceListStatus } from "./constants"
 import {
   PriceListCreateCurrencyPrice,
-  PriceListCreateProductVariantSchema,
   PriceListCreateProductsSchema,
+  PriceListCreateProductVariantSchema,
 } from "./schemas"
-import { ExtendedAdminProduct, ExtendedAdminProductVariant } from "../../../types/products"
 
-const getValues = (priceList: HttpTypes.AdminPriceList) => {
+type PriceListStatusSource = Pick<
+  HttpTypes.AdminPriceList,
+  "ends_at" | "starts_at" | "status"
+>
+
+const getValues = (priceList: PriceListStatusSource) => {
   const startsAt = priceList.starts_at
   const endsAt = priceList.ends_at
 
@@ -27,7 +36,7 @@ const getValues = (priceList: HttpTypes.AdminPriceList) => {
 
 export const getPriceListStatus = (
   t: TFunction<"translation">,
-  priceList: HttpTypes.AdminPriceList
+  priceList: PriceListStatusSource
 ) => {
   const { isExpired, isScheduled, isDraft } = getValues(priceList)
 

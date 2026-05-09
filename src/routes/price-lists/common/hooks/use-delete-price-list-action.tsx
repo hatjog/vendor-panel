@@ -8,7 +8,7 @@ import { useDeletePriceList } from "../../../../hooks/api/price-lists"
 export const useDeletePriceListAction = ({
   priceList,
 }: {
-  priceList: HttpTypes.AdminPriceList
+  priceList: Pick<HttpTypes.AdminPriceList, "id" | "title">
 }) => {
   const { t } = useTranslation()
   const prompt = usePrompt()

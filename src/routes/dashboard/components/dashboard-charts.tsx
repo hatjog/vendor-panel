@@ -1,13 +1,6 @@
+import { useState } from "react"
+
 import { CalendarMini, TriangleRightMini } from "@medusajs/icons"
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
 import {
   Badge,
   Button,
@@ -17,13 +10,22 @@ import {
   Popover,
   Text,
 } from "@medusajs/ui"
+import { useUnreads } from "@talkjs/react"
+import { addDays, differenceInDays, format, subDays } from "date-fns"
 import { Link, useSearchParams } from "react-router-dom"
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
+
+import { Calendar } from "../../../components/common/calendar/calendar"
 import { useStatistics } from "../../../hooks/api"
 import { ChartSkeleton } from "./chart-skeleton"
-import { useState } from "react"
-import { addDays, differenceInDays, format, subDays } from "date-fns"
-import { Calendar } from "../../../components/common/calendar/calendar"
-import { useUnreads } from "@talkjs/react"
 
 const colorPicker = (line: string) => {
   switch (line) {
@@ -89,7 +91,7 @@ export const DashboardCharts = ({
 }: {
   notFulfilledOrders: number
   fulfilledOrders: number
-  reviewsToReply: any[]
+  reviewsToReply: number
 }) => {
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -150,13 +152,13 @@ export const DashboardCharts = ({
             </Text>
           </div>
         </div>
-        <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-2 md:grid-cols-4">
           <Link to="/orders?order_status=not_fulfilled">
             <Button
               variant="secondary"
-              className="w-full justify-between py-4 h-full"
+              className="h-full w-full justify-between py-4"
             >
-              <div className="flex gap-4 items-center">
+              <div className="flex items-center gap-4">
                 <Badge>{notFulfilledOrders}</Badge>
                 Orders to be fulfilled
               </div>
@@ -166,9 +168,9 @@ export const DashboardCharts = ({
           <Link to="/orders?order_status=fulfilled">
             <Button
               variant="secondary"
-              className="w-full justify-between py-4 h-full"
+              className="h-full w-full justify-between py-4"
             >
-              <div className="flex gap-4 items-center">
+              <div className="flex items-center gap-4">
                 <Badge>{fulfilledOrders}</Badge>
                 Orders to be shipped
               </div>
@@ -178,9 +180,9 @@ export const DashboardCharts = ({
           <Link to="/reviews?seller_note=false">
             <Button
               variant="secondary"
-              className="w-full justify-between py-4 h-full"
+              className="h-full w-full justify-between py-4"
             >
-              <div className="flex gap-4 items-center">
+              <div className="flex items-center gap-4">
                 <Badge>{reviewsToReply}</Badge>
                 Reviews to reply
               </div>
@@ -190,9 +192,9 @@ export const DashboardCharts = ({
           <Link to="/messages">
             <Button
               variant="secondary"
-              className="w-full justify-between py-4 h-full h-full"
+              className="h-full w-full justify-between py-4"
             >
-              <div className="flex gap-4 items-center">
+              <div className="flex items-center gap-4">
                 <Badge>{unreadMessages?.length || 0}</Badge>Unread messages
               </div>
               <TriangleRightMini color="grey" />
@@ -200,7 +202,7 @@ export const DashboardCharts = ({
           </Link>
         </div>
       </Container>
-      <Container className="divide-y p-0 mt-2">
+      <Container className="mt-2 divide-y p-0">
         <div className="flex items-center justify-between px-6 py-4">
           <div>
             <Heading>Analytics</Heading>
@@ -240,8 +242,8 @@ export const DashboardCharts = ({
             </Popover>
           </div>
         </div>
-        <div className="relative px-6 py-4 grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <div className="col-span-3 relative h-[150px] md:h-[300px] w-[calc(100%-2rem)]">
+        <div className="relative grid grid-cols-1 gap-4 px-6 py-4 lg:grid-cols-4">
+          <div className="relative col-span-3 h-[150px] w-[calc(100%-2rem)] md:h-[300px]">
             {isPending ? (
               <ChartSkeleton />
             ) : (
@@ -263,18 +265,18 @@ export const DashboardCharts = ({
               </ResponsiveContainer>
             )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:block gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:block">
             {isPending ? (
               <ChartSkeleton />
             ) : (
               <>
                 <Button
                   variant="secondary"
-                  className="p-4 border rounded-lg w-full flex-col items-start my-2"
+                  className="my-2 w-full flex-col items-start rounded-lg border p-4"
                   onClick={() => handleFilter("orders")}
                 >
                   <Heading level="h3">Orders</Heading>
-                  <div className="flex gap-2 items-center mt-2">
+                  <div className="mt-2 flex items-center gap-2">
                     <div
                       className="h-8 w-1"
                       style={{
@@ -290,11 +292,11 @@ export const DashboardCharts = ({
                 </Button>
                 <Button
                   variant="secondary"
-                  className="p-4 border rounded-lg w-full flex-col items-start my-2"
+                  className="my-2 w-full flex-col items-start rounded-lg border p-4"
                   onClick={() => handleFilter("customers")}
                 >
                   <Heading level="h3">Customers</Heading>
-                  <div className="flex gap-2 items-center mt-2">
+                  <div className="mt-2 flex items-center gap-2">
                     <div
                       className="h-8 w-1"
                       style={{
@@ -335,11 +337,11 @@ const CustomTooltip = ({
 }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-ui-bg-component p-4 rounded-lg border border-ui-border-base">
+      <div className="rounded-lg border border-ui-border-base bg-ui-bg-component p-4">
         <p className="font-bold">{`${label}`}</p>
         <ul>
           {payload.map((item) => (
-            <li key={item.dataKey} className="flex gap-2 items-center">
+            <li key={item.dataKey} className="flex items-center gap-2">
               <span className="capitalize" style={{ color: item.stroke }}>
                 {item.name}:
               </span>

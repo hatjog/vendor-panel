@@ -2,12 +2,13 @@ import { FetchError } from "@medusajs/js-sdk"
 import { AdminPromotion, HttpTypes, LinkMethodRequest } from "@medusajs/types"
 import {
   QueryKey,
-  UseMutationOptions,
-  UseQueryOptions,
   useMutation,
+  UseMutationOptions,
   useQuery,
+  UseQueryOptions,
 } from "@tanstack/react-query"
-import { fetchQuery, sdk } from "../../lib/client"
+
+import { fetchQuery } from "../../lib/client"
 import { queryClient } from "../../lib/query-client"
 import { queryKeysFactory } from "../../lib/query-key-factory"
 import { promotionsQueryKeys } from "./promotions"

@@ -2,22 +2,22 @@ import { FetchError } from "@medusajs/js-sdk"
 import { HttpTypes } from "@medusajs/types"
 import {
   QueryKey,
-  UseMutationOptions,
-  UseQueryOptions,
   useMutation,
-  useQuery,
+  UseMutationOptions,
   useQueries,
+  useQuery,
+  UseQueryOptions,
 } from "@tanstack/react-query"
 
 import { fetchQuery, sdk } from "../../lib/client"
 import { queryClient } from "../../lib/query-client"
 import { queryKeysFactory } from "../../lib/query-key-factory"
-import { variantsQueryKeys } from "./products"
 import type {
   InventoryItemLocationLevel,
   InventoryItemWithLevels,
   UseMultipleInventoryItemLevelsReturn,
 } from "../../types/inventory"
+import { variantsQueryKeys } from "./products"
 
 const INVENTORY_ITEMS_QUERY_KEY = "inventory_items" as const
 export const inventoryItemsQueryKeys = queryKeysFactory(
@@ -30,7 +30,7 @@ export const inventoryItemLevelsQueryKeys = queryKeysFactory(
 )
 
 export const useInventoryItems = (
-  query?: HttpTypes.AdminInventoryItemParams,
+  query?: HttpTypes.AdminInventoryItemsParams,
   options?: Omit<
     UseQueryOptions<
       HttpTypes.AdminInventoryItemListResponse,
@@ -147,7 +147,7 @@ export const useDeleteInventoryItem = (
   >
 ) => {
   return useMutation({
-    mutationFn:  () =>
+    mutationFn: () =>
       fetchQuery(`/vendor/inventory-items/${id}`, {
         method: "DELETE",
       }),
@@ -177,7 +177,9 @@ export const useDeleteInventoryItemLevel = (
     mutationFn: () =>
       fetchQuery(
         `/vendor/inventory-items/${inventoryItemId}/location-levels/${locationId}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+        }
       ),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
@@ -241,7 +243,10 @@ export const useUpdateInventoryLevel = (
     mutationFn: (payload: HttpTypes.AdminUpdateInventoryLevel) =>
       fetchQuery(
         `/vendor/inventory-items/${inventoryItemId}/location-levels/${locationId}`,
-        { method: "POST", body: payload }
+        {
+          method: "POST",
+          body: payload,
+        }
       ),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({

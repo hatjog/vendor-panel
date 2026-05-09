@@ -1,5 +1,3 @@
-import { CampaignBudgetTypeValues } from "@medusajs/types"
-
 export const DEFAULT_CAMPAIGN_VALUES = {
   name: "",
   description: "",
@@ -7,7 +5,7 @@ export const DEFAULT_CAMPAIGN_VALUES = {
   starts_at: null,
   ends_at: null,
   budget: {
-    type: "usage" as CampaignBudgetTypeValues,
+    type: "usage" as const,
     currency_code: null,
     limit: null,
   },
