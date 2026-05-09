@@ -1,11 +1,11 @@
+import { useRef } from "react"
+
 import { HttpTypes } from "@medusajs/types"
 import { Button, toast } from "@medusajs/ui"
-import { useRef } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 
-import { ExtendedAdminProduct } from "../../../../../types/products"
 import { DataGrid } from "../../../../../components/data-grid"
 import {
   RouteFocusModal,
@@ -14,13 +14,14 @@ import {
 import { KeyboundForm } from "../../../../../components/utilities/keybound-form"
 import { usePriceListLinkProducts } from "../../../../../hooks/api/price-lists"
 import { castNumber } from "../../../../../lib/cast-number"
+import { ExtendedPriceList } from "../../../../../types/price-list"
+import { ExtendedAdminProduct } from "../../../../../types/products"
 import { usePriceListGridColumns } from "../../../common/hooks/use-price-list-grid-columns"
 import {
-  PriceListUpdateProductVariantsSchema,
   PriceListUpdateProductsSchema,
+  PriceListUpdateProductVariantsSchema,
 } from "../../../common/schemas"
 import { isProductRow } from "../../../common/utils"
-import { ExtendedPriceList } from "../../../../../types/price-list"
 
 type PriceListPricesEditFormProps = {
   priceList: ExtendedPriceList
@@ -167,7 +168,10 @@ function initRecord(
     record[product.id] = {
       variants:
         product.variants?.reduce((variants, variant) => {
-          const prices = variantPrices?.[variant.id] || {}
+          const prices = variantPrices?.[variant.id] || {
+            currency_prices: {},
+            region_prices: {},
+          }
           variants[variant.id] = prices
 
           return variants
@@ -246,9 +250,7 @@ function convertToPriceArray(
 }
 
 function createMapKey(obj: PriceObject) {
-  return `${obj.variantId}-${obj.currencyCode}-${obj.regionId || "none"}-${
-    obj.id || "none"
-  }`
+  return `${obj.variantId}-${obj.currencyCode}-${obj.regionId || "none"}-${obj.id || "none"}`
 }
 
 function comparePrices(initialPrices: PriceObject[], newPrices: PriceObject[]) {

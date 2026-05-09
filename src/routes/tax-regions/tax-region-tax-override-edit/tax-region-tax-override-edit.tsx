@@ -157,7 +157,7 @@ const useDefaultRulesValues = (
     (acc, { key, getResult }, index) => ({
       ...acc,
       [key]: queryResults[index].enabled
-        ? getResult(queryResults[index].result)
+        ? getResult(queryResults[index].result as never)
         : [],
     }),
     {} as InitialRuleValues

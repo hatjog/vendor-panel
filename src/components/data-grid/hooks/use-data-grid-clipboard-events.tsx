@@ -1,4 +1,5 @@
 import { useCallback } from "react"
+
 import { FieldValues, Path, PathValue } from "react-hook-form"
 
 import { DataGridBulkUpdateCommand, DataGridMatrix } from "../models"
@@ -50,7 +51,7 @@ export const useDataGridClipboardEvents = <
           if (typeof value === "object" && value !== null) {
             return JSON.stringify(value)
           }
-          return `${value}` ?? ""
+          return value == null ? "" : `${value}`
         })
         .join("\t")
 
