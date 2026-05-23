@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  ApplicationMethodAllocationValues,
   ApplicationMethodTargetTypeValues,
   ApplicationMethodTypeValues,
   PromotionRuleOperatorValues,
@@ -52,7 +51,7 @@ const defaultValues = {
   status: 'draft' as PromotionStatusValues,
   rules: [],
   application_method: {
-    allocation: 'each' as ApplicationMethodAllocationValues,
+    allocation: 'each' as const,
     type: 'percentage' as ApplicationMethodTypeValues,
     target_type: 'items' as ApplicationMethodTargetTypeValues,
     max_quantity: 1,
