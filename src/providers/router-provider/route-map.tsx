@@ -40,6 +40,16 @@ export const RouteMap: RouteObject[] = [
             errorElement: <ErrorBoundary />,
             lazy: () => import("../../routes/dashboard"),
           },
+          // cc-4 finding F-05: vendor-panel voucher lookup + redeem page
+          // backing Story 8.4 cross-actor handoff.
+          {
+            path: "vouchers/redeem",
+            handle: {
+              breadcrumb: () => "Redeem voucher",
+            },
+            errorElement: <ErrorBoundary />,
+            lazy: () => import("../../routes/vouchers"),
+          },
           {
             path: "/requests",
             errorElement: <ErrorBoundary />,
