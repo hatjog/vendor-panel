@@ -3,11 +3,22 @@ import Medusa from '@medusajs/js-sdk';
 export const backendUrl = __BACKEND_URL__ ?? '/';
 export const publishableApiKey = __PUBLISHABLE_API_KEY__ ?? '';
 
+/**
+ * Decode the JWT payload segment.
+ *
+ * cc-4 finding F-17: base64url uses `-` `_` and may omit padding; raw
+ * `atob` throws on these, returns null, isTokenExpired returns true, and
+ * the user is unexpectedly logged out. Normalise to standard base64
+ * before decoding.
+ */
 const decodeJwt = (token: string) => {
   try {
     const payload = token.split('.')[1];
-
-    return JSON.parse(atob(payload));
+    if (!payload) return null;
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padLen = (4 - (b64.length % 4)) % 4;
+    const padded = b64 + '='.repeat(padLen);
+    return JSON.parse(atob(padded));
   } catch (err) {
     return null;
   }
@@ -28,7 +39,12 @@ export const sdk = new Medusa({
 });
 
 // useful when you want to call the BE from the console and try things out quickly
-if (typeof window !== 'undefined') {
+// cc-4 finding F-09: gate this on non-production so the convenience handle
+// does not leak the SDK + in-flight auth token into prod XSS surfaces.
+if (
+  typeof window !== 'undefined' &&
+  (typeof process === 'undefined' || process.env?.NODE_ENV !== 'production')
+) {
   (window as any).__sdk = sdk;
 }
 
