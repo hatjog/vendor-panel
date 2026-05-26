@@ -1,6 +1,4 @@
-/* VENDORED — sync via validator (Story 8.5; canonical: GP/backend/packages/api/src/lib/query-serializer.ts)
- * DO NOT EDIT — drift detection w Story 8.6 validate_query_serializer_drift.py
- */
+// VENDORED from GP/backend/packages/api/src/lib/query-serializer.ts — sync via _grow/tools/validate_query_serializer_drift.py
 /**
  * Canonical query string serializer for cross-workspace consistency (cc-4 F-18).
  *
