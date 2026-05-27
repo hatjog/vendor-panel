@@ -11,20 +11,53 @@ import type {
 import type { VendorPromotionRuleValueParams } from '../types/promotion';
 import { fetchQuery } from './client';
 
-export { useTabbedForm as mercurVendorPackageMarker } from '@mercurjs/vendor';
+/**
+ * `@mercurjs/vendor@2.1.1` re-exported UI surface.
+ *
+ * Story 8.3 ratified waiver (review-fix 2026-05-27 H-01/H-02):
+ * `@mercurjs/vendor@2.1.1` publishes only React UI primitives
+ * (`Notifications`, `TabbedForm`, `useTabbedForm`, `App`, `TabDefinition`);
+ * upstream does not export a typed HTTP client. The typed transport surface
+ * for `/vendor/*` lives below in `mercurVendorClient` and routes through the
+ * existing `fetchQuery` auth transport (bearer + publishable key).
+ *
+ * Re-exporting the genuine UI surface (NOT a single marker hook) keeps
+ * value-level consumption of `@mercurjs/vendor` honest for FR-Ga.2 AC1 grep,
+ * unblocks Epic 6 Story 6.4 `/security` page to import these primitives via
+ * `@/lib/mercur-vendor-client` (single canonical re-export point), and is
+ * tree-shakeable per consumer.
+ *
+ * Premise gap vs. architecture D-118 ("Path B Dual-SDK Completion") is
+ * tracked as Deferred:architectural in story 8.3 Dev Agent Record →
+ * D-118 reassess (Story 8.4 drift validator must accept the hand-rolled
+ * facade pattern as canonical until upstream ships a typed vendor SDK).
+ */
+export {
+  Notifications as MercurVendorNotifications,
+  TabbedForm as MercurVendorTabbedForm,
+  useTabbedForm as useMercurVendorTabbedForm
+} from '@mercurjs/vendor';
+export type { TabDefinition as MercurVendorTabDefinition } from '@mercurjs/vendor';
 
 type VendorQueryValue = string | number | boolean | string[] | object | null | undefined;
 
 type VendorQuery = Record<string, VendorQueryValue>;
 
-type VendorFetchOptions<TBody = object, TQuery = unknown> = {
+type VendorFetchOptions<TBody extends object = object, TQuery = unknown> = {
   method: 'GET' | 'POST' | 'DELETE';
   path: string;
   body?: TBody;
   query?: TQuery;
 };
 
-const vendorFetch = <TResponse, TBody = object, TQuery = unknown>({
+// `body` is constrained to `object` so it serialises through `fetchQuery`
+// without unsafe widening; `query` is preserved as `TQuery` (caller-declared
+// typed params, e.g. `AdminProductListParams`) and only widened to
+// `fetchQuery`'s transport signature at the boundary. Result is narrowed to
+// `TResponse` declared by each caller; per review-fix waiver M-01 / L-03
+// (2026-05-27) the response narrowing is the boundary cost of the hand-rolled
+// facade until `@mercurjs/vendor` ships a typed HTTP client (H-02 deferral).
+const vendorFetch = <TResponse, TBody extends object = object, TQuery = unknown>({
   method,
   path,
   body,
@@ -32,7 +65,7 @@ const vendorFetch = <TResponse, TBody = object, TQuery = unknown>({
 }: VendorFetchOptions<TBody, TQuery>) =>
   fetchQuery(path, {
     method,
-    body: body as object | undefined,
+    body,
     query: query as Record<string, string | number | object> | undefined
   }) as Promise<TResponse>;
 
@@ -145,11 +178,11 @@ export const mercurVendorClient = {
         method: 'DELETE',
         path: `/vendor/products/${id}`
       }),
-    applicableAttributes: (id: string) =>
+    applicableAttributes: (id: string, query?: VendorQuery) =>
       vendorFetch<ProductAttributesResponse>({
         method: 'GET',
         path: `/vendor/products/${id}/applicable-attributes`,
-        query: { fields: '+is_required' }
+        query: { fields: '+is_required', ...query }
       }),
     export: (
       payload: HttpTypes.AdminExportProductRequest,
@@ -188,6 +221,13 @@ export const mercurVendorClient = {
       }),
     locationLevels: {
       list: (inventoryItemId: string, query?: VendorQuery) =>
+        // M-02 (review-fix 2026-05-27): `location_levels: any[]` preserved as
+        // Deferred:architectural — downstream `ExtendedLocationLevel` /
+        // `AdminInventoryLevel` consumer types diverge from the upstream
+        // `InventoryItemLocationLevel` shape (stock_locations + created_at /
+        // updated_at / deleted_at field-type drift). Tightening here cascades
+        // into reservation-edit + location-list table types out-of-scope for
+        // Story 8.3; routed to Story 8.3.1 / Sprint 5 hardening.
         vendorFetch<HttpTypes.AdminInventoryLevelListResponse & { location_levels: any[] }>({
           method: 'GET',
           path: `/vendor/inventory-items/${inventoryItemId}/location-levels`,
@@ -415,7 +455,7 @@ export const mercurVendorClient = {
         payload: HttpTypes.BatchUpdatePromotionRulesReq
       ) => {
         const { rules } = await mercurVendorClient.promotions.rules(id, ruleType);
-        const ruleIds = rules.map((rule: { id: string }) => rule.id);
+        const ruleIds = rules.map(rule => rule.id);
 
         await vendorFetch<HttpTypes.AdminPromotionResponse, { delete: string[] }>({
           method: 'POST',
