@@ -27,21 +27,21 @@
       "last_active": "Ostatnia aktywność {{time}}",
       "current_badge": "Ta sesja",
       "unknownRegion": "Region niedostępny",
-      "unknownLastActive": "niedawno"
+      "unknownLastActive": "niedawno",
+      "rate_limited_aria": "Wyloguj sesję na {{device}} — limit prób, ponów za {{seconds}} s",
+      "rate_limited_countdown": "Spróbuj ponownie za {{seconds}} s"
     },
     "modal": {
       "cancel": "Anuluj",
       "loading": "Wylogowywanie...",
       "other": {
         "title": "Wylogować tę sesję?",
-        "body": "Session on device {{device}} (last active {{lastActive}}) will be terminated."
+        "body": "Sesja na urządzeniu {{device}} (ostatnia aktywność {{lastActive}}) zostanie zakończona."
       },
       "current": {
         "title": "Wylogować to urządzenie?",
         "tier1": "Wylogujesz się natychmiast.",
-        "tier2": "Edytujesz: {{label}}. Zostanie autozapisane.",
         "tier2_fallback": "Edytujesz swój workspace.",
-        "tier2_fallback_label": "swój workspace",
         "tier3": "Czy zapisałaś niewysłaną pracę?"
       },
       "confirm": {
@@ -52,8 +52,9 @@
     "toast": {
       "success": "Sesja na {{device}} wygasła.",
       "error_generic": "Nie udało się wylogować tej sesji. Odśwież listę.",
-      "error_rate_limited": "Spróbuj ponownie za chwilę.",
-      "error_server": "Problem z serwerem. Spróbujemy automatycznie."
+      "error_rate_limited": "Spróbuj ponownie za {{seconds}} s.",
+      "error_server": "Problem z serwerem. Spróbuj ponownie.",
+      "info_retry_server": "Problem z serwerem. Spróbujemy automatycznie."
     }
   },
   "general": {

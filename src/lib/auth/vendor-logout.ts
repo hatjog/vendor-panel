@@ -11,11 +11,41 @@ const TARGETED_VENDOR_SESSION_COOKIES = [
   '_csrf'
 ];
 
-const clearCookie = (name: string) => {
-  const expires = 'Thu, 01 Jan 1970 00:00:00 GMT';
+const EXPIRED = 'Thu, 01 Jan 1970 00:00:00 GMT';
 
-  document.cookie = `${name}=; expires=${expires}; path=/`;
-  document.cookie = `${name}=; expires=${expires}; path=/; SameSite=Lax`;
+const buildDomainVariants = (hostname: string): Array<string | undefined> => {
+  // localhost, IPs and TLD-less hostnames are not valid Domain values; only emit
+  // explicit domains when the hostname has at least one dot.
+  if (!hostname || hostname === 'localhost' || /^[\d.:]+$/.test(hostname) || !hostname.includes('.')) {
+    return [undefined];
+  }
+
+  const variants = new Set<string | undefined>([undefined, hostname, `.${hostname}`]);
+  const parts = hostname.split('.');
+
+  if (parts.length > 2) {
+    const apex = parts.slice(-2).join('.');
+    variants.add(apex);
+    variants.add(`.${apex}`);
+  }
+
+  return Array.from(variants);
+};
+
+const clearCookie = (name: string) => {
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const domains = buildDomainVariants(hostname);
+
+  for (const domain of domains) {
+    const domainAttr = domain ? `; Domain=${domain}` : '';
+    // Mercur 2.1.1 vendor cookies may be set with Secure; SameSite=None for cross-subdomain
+    // flows or with SameSite=Lax. To delete them reliably the Set-Cookie attributes must
+    // match how they were created, so we emit every realistic variant.
+    document.cookie = `${name}=; expires=${EXPIRED}; path=/${domainAttr}`;
+    document.cookie = `${name}=; expires=${EXPIRED}; path=/; SameSite=Lax${domainAttr}`;
+    document.cookie = `${name}=; expires=${EXPIRED}; path=/; SameSite=Strict${domainAttr}`;
+    document.cookie = `${name}=; expires=${EXPIRED}; path=/; SameSite=None; Secure${domainAttr}`;
+  }
 };
 
 export const clearVendorSessionCookies = () => {

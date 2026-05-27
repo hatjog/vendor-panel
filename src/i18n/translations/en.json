@@ -27,7 +27,9 @@
       "last_active": "Last active {{time}}",
       "current_badge": "This session",
       "unknownRegion": "Region unavailable",
-      "unknownLastActive": "recently"
+      "unknownLastActive": "recently",
+      "rate_limited_aria": "Log out session on {{device}} — rate limited, retry in {{seconds}}s",
+      "rate_limited_countdown": "Try again in {{seconds}}s"
     },
     "modal": {
       "cancel": "Cancel",
@@ -39,9 +41,7 @@
       "current": {
         "title": "Log out of this device?",
         "tier1": "You will be logged out immediately.",
-        "tier2": "You are editing: {{label}}. It will be autosaved.",
         "tier2_fallback": "You are editing your workspace.",
-        "tier2_fallback_label": "your workspace",
         "tier3": "Have you saved unsent work?"
       },
       "confirm": {
@@ -52,8 +52,9 @@
     "toast": {
       "success": "Session on {{device}} expired.",
       "error_generic": "Could not log out this session. Refresh the list.",
-      "error_rate_limited": "Try again in a moment.",
-      "error_server": "Server problem. We will try automatically."
+      "error_rate_limited": "Try again in {{seconds}}s.",
+      "error_server": "Server problem. Please try again.",
+      "info_retry_server": "Server problem. We will try automatically."
     }
   },
   "general": {

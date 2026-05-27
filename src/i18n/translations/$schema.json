@@ -91,9 +91,22 @@
             },
             "unknownLastActive": {
               "type": "string"
+            },
+            "rate_limited_aria": {
+              "type": "string"
+            },
+            "rate_limited_countdown": {
+              "type": "string"
             }
           },
-          "required": ["last_active", "current_badge", "unknownRegion", "unknownLastActive"],
+          "required": [
+            "last_active",
+            "current_badge",
+            "unknownRegion",
+            "unknownLastActive",
+            "rate_limited_aria",
+            "rate_limited_countdown"
+          ],
           "additionalProperties": false
         },
         "modal": {
@@ -127,13 +140,7 @@
                 "tier1": {
                   "type": "string"
                 },
-                "tier2": {
-                  "type": "string"
-                },
                 "tier2_fallback": {
-                  "type": "string"
-                },
-                "tier2_fallback_label": {
                   "type": "string"
                 },
                 "tier3": {
@@ -143,9 +150,7 @@
               "required": [
                 "title",
                 "tier1",
-                "tier2",
                 "tier2_fallback",
-                "tier2_fallback_label",
                 "tier3"
               ],
               "additionalProperties": false
@@ -181,9 +186,18 @@
             },
             "error_server": {
               "type": "string"
+            },
+            "info_retry_server": {
+              "type": "string"
             }
           },
-          "required": ["success", "error_generic", "error_rate_limited", "error_server"],
+          "required": [
+            "success",
+            "error_generic",
+            "error_rate_limited",
+            "error_server",
+            "info_retry_server"
+          ],
           "additionalProperties": false
         }
       },

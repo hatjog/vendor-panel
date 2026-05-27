@@ -18,6 +18,7 @@ export type VendorSessionsResponse = {
 export type RevokeVendorSessionInput = {
   jti: string;
   current_session: boolean;
+  onRetryServerError?: () => void;
 };
 
 export type RevokeVendorSessionResponse = {
@@ -153,9 +154,8 @@ const fetchVendorSessions = async () => {
   return (await response.json()) as VendorSessionsResponse;
 };
 
-const revokeVendorSession = async (
-  input: RevokeVendorSessionInput,
-  retryServerError = true
+const performRevokeRequest = async (
+  input: RevokeVendorSessionInput
 ): Promise<RevokeVendorSessionResponse> => {
   // TODO(8.3): upgrade to @mercurjs/vendor typed client once the package exposes vendor magic-link revoke HTTP methods.
   const response = await fetch(
@@ -172,16 +172,24 @@ const revokeVendorSession = async (
   );
 
   if (!response.ok) {
-    const error = await buildSessionError(response);
-
-    if (retryServerError && error.kind === 'server') {
-      return revokeVendorSession(input, false);
-    }
-
-    throw error;
+    throw await buildSessionError(response);
   }
 
   return (await response.json()) as RevokeVendorSessionResponse;
+};
+
+const revokeVendorSession = async (
+  input: RevokeVendorSessionInput
+): Promise<RevokeVendorSessionResponse> => {
+  try {
+    return await performRevokeRequest(input);
+  } catch (error) {
+    if (error instanceof VendorSessionApiError && error.kind === 'server') {
+      input.onRetryServerError?.();
+      return performRevokeRequest(input);
+    }
+    throw error;
+  }
 };
 
 export const useVendorSessions = () => {

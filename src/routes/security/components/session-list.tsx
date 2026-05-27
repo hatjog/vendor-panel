@@ -8,9 +8,11 @@ import { useTranslation } from 'react-i18next';
 
 import { VendorSession } from '../../../hooks/api/sessions';
 
+export type DisabledMeta = Record<string, { secondsRemaining: number }>;
+
 type SessionListProps = {
   sessions: VendorSession[];
-  disabledJtis?: Set<string>;
+  disabledMeta?: DisabledMeta;
   onRevokeClick: (session: VendorSession) => void;
 };
 
@@ -40,15 +42,24 @@ const useRelativeTime = (lastActive: string) => {
 
 const SessionRow = ({
   session,
-  disabled,
+  rateLimitSeconds,
   onRevokeClick
 }: {
   session: VendorSession;
-  disabled: boolean;
+  rateLimitSeconds?: number;
   onRevokeClick: (session: VendorSession) => void;
 }) => {
   const { t } = useTranslation();
   const lastActive = useRelativeTime(session.last_active);
+  const disabled = Boolean(rateLimitSeconds && rateLimitSeconds > 0);
+  const countdownId = `security-rate-limit-${session.jti}`;
+
+  const ariaLabel = disabled
+    ? t('security.session.rate_limited_aria', {
+        device: session.device_class,
+        seconds: rateLimitSeconds
+      })
+    : t('security.revoke_session_aria', { device: session.device_class });
 
   return (
     <li className="flex min-h-[72px] flex-col gap-3 border-t border-ui-border-base px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -76,11 +87,21 @@ const SessionRow = ({
         >
           {session.ip_region || t('security.session.unknownRegion')}
         </Text>
+        {disabled && (
+          <Text
+            aria-live="polite"
+            id={countdownId}
+            size="small"
+            className="text-ui-fg-error"
+          >
+            {t('security.session.rate_limited_countdown', { seconds: rateLimitSeconds })}
+          </Text>
+        )}
       </div>
       <IconButton
-        aria-label={t('security.revoke_session_aria', {
-          device: session.device_class
-        })}
+        aria-describedby={disabled ? countdownId : undefined}
+        aria-disabled={disabled || undefined}
+        aria-label={ariaLabel}
         className="min-h-11 min-w-11 self-start sm:self-center"
         disabled={disabled}
         onClick={() => onRevokeClick(session)}
@@ -134,7 +155,7 @@ export const SessionListError = ({ onRetry }: { onRetry: () => void }) => {
 
 export const SessionList = ({
   sessions,
-  disabledJtis = new Set(),
+  disabledMeta = {},
   onRevokeClick
 }: SessionListProps) => {
   const { t } = useTranslation();
@@ -152,9 +173,9 @@ export const SessionList = ({
         <ul>
           {sessions.map(session => (
             <SessionRow
-              disabled={disabledJtis.has(session.jti)}
               key={session.jti}
               onRevokeClick={onRevokeClick}
+              rateLimitSeconds={disabledMeta[session.jti]?.secondsRemaining}
               session={session}
             />
           ))}

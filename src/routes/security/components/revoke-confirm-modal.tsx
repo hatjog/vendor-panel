@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 
 import { clx, Prompt, Text } from '@medusajs/ui';
+import { formatDistanceToNow } from 'date-fns';
+import { enUS, pl } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 
 import { VendorSession } from '../../../hooks/api/sessions';
@@ -13,11 +15,32 @@ type RevokeConfirmModalProps = {
   loading: boolean;
 };
 
-const useDirtyFormsDetector = () => {
-  return {
-    dirty: false,
-    labels: [] as string[]
-  };
+const localeByLanguage = {
+  en: enUS,
+  pl
+};
+
+const useRelativeLastActive = (lastActive: string | undefined) => {
+  const { i18n, t } = useTranslation();
+
+  return useMemo(() => {
+    if (!lastActive) {
+      return t('security.session.unknownLastActive');
+    }
+
+    const parsed = new Date(lastActive);
+
+    if (Number.isNaN(parsed.getTime())) {
+      return t('security.session.unknownLastActive');
+    }
+
+    const language = i18n.language.split('-')[0] as keyof typeof localeByLanguage;
+
+    return formatDistanceToNow(parsed, {
+      addSuffix: true,
+      locale: localeByLanguage[language] || enUS
+    });
+  }, [i18n.language, lastActive, t]);
 };
 
 export const RevokeConfirmModal = ({
@@ -28,30 +51,7 @@ export const RevokeConfirmModal = ({
   loading
 }: RevokeConfirmModalProps) => {
   const { t } = useTranslation();
-  const dirtyForms = useDirtyFormsDetector();
-  const cancelRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (open) {
-      window.setTimeout(() => cancelRef.current?.focus(), 0);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onOpenChange(false);
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onOpenChange, open]);
+  const lastActive = useRelativeLastActive(session?.last_active);
 
   if (!session) {
     return null;
@@ -61,12 +61,17 @@ export const RevokeConfirmModal = ({
   const title = currentSession
     ? t('security.modal.current.title')
     : t('security.modal.other.title');
-  const tier2Label = dirtyForms.dirty
-    ? dirtyForms.labels[0] || t('security.modal.current.tier2_fallback_label')
-    : t('security.modal.current.tier2_fallback_label');
+
+  const handleOpenChange = (next: boolean) => {
+    if (loading && !next) {
+      return;
+    }
+    onOpenChange(next);
+  };
 
   return (
     <Prompt
+      onOpenChange={handleOpenChange}
       open={open}
       variant={currentSession ? 'danger' : 'confirmation'}
     >
@@ -74,6 +79,11 @@ export const RevokeConfirmModal = ({
         aria-describedby="security-revoke-modal-body"
         aria-labelledby="security-revoke-modal-title"
         aria-modal="true"
+        onEscapeKeyDown={event => {
+          if (loading) {
+            event.preventDefault();
+          }
+        }}
       >
         <Prompt.Header>
           <Prompt.Title id="security-revoke-modal-title">{title}</Prompt.Title>
@@ -85,20 +95,14 @@ export const RevokeConfirmModal = ({
               {currentSession ? (
                 <>
                   <Text weight="plus">{t('security.modal.current.tier1')}</Text>
-                  <Text>
-                    {dirtyForms.dirty
-                      ? t('security.modal.current.tier2', {
-                          label: tier2Label
-                        })
-                      : t('security.modal.current.tier2_fallback')}
-                  </Text>
+                  <Text>{t('security.modal.current.tier2_fallback')}</Text>
                   <Text>{t('security.modal.current.tier3')}</Text>
                 </>
               ) : (
                 <Text>
                   {t('security.modal.other.body', {
                     device: session.device_class,
-                    lastActive: session.last_active
+                    lastActive
                   })}
                 </Text>
               )}
@@ -107,9 +111,8 @@ export const RevokeConfirmModal = ({
         </Prompt.Header>
         <Prompt.Footer>
           <Prompt.Cancel
+            autoFocus
             disabled={loading}
-            onClick={() => onOpenChange(false)}
-            ref={cancelRef}
             type="button"
           >
             {t('security.modal.cancel')}
