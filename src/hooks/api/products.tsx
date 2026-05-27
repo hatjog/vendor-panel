@@ -1,54 +1,63 @@
 import { FetchError } from '@medusajs/js-sdk';
 import { HttpTypes } from '@medusajs/types';
-import { QueryKey, useMutation, UseMutationOptions, useQuery, UseQueryOptions } from '@tanstack/react-query';
+import {
+  QueryKey,
+  useMutation,
+  UseMutationOptions,
+  useQuery,
+  UseQueryOptions
+} from '@tanstack/react-query';
 
-
-
-import { fetchQuery, importProductsQuery, sdk } from '../../lib/client';
+import { importProductsQuery, sdk } from '../../lib/client';
+import {
+  mercurVendorClient,
+  type ProductVariantsListResponse
+} from '../../lib/mercur-vendor-client';
 import { queryClient } from '../../lib/query-client';
 import { queryKeysFactory } from '../../lib/query-key-factory';
-import { ExtendedAdminProductListResponse, ExtendedAdminProductResponse, ExtendedAdminProductVariant, ProductAttributesResponse } from '../../types/products';
+import {
+  ExtendedAdminProductListResponse,
+  ExtendedAdminProductResponse,
+  ProductAttributesResponse
+} from '../../types/products';
 import productsImagesFormatter from '../../utils/products-images-formatter';
 import { inventoryItemsQueryKeys } from './inventory.tsx';
 
+const PRODUCTS_QUERY_KEY = 'products' as const;
+export const productsQueryKeys = queryKeysFactory(PRODUCTS_QUERY_KEY);
 
-const PRODUCTS_QUERY_KEY = "products" as const
-export const productsQueryKeys = queryKeysFactory(PRODUCTS_QUERY_KEY)
+const VARIANTS_QUERY_KEY = 'product_variants' as const;
+export const variantsQueryKeys = queryKeysFactory(VARIANTS_QUERY_KEY);
 
-const VARIANTS_QUERY_KEY = "product_variants" as const
-export const variantsQueryKeys = queryKeysFactory(VARIANTS_QUERY_KEY)
-
-const OPTIONS_QUERY_KEY = "product_options" as const
-export const optionsQueryKeys = queryKeysFactory(OPTIONS_QUERY_KEY)
+const OPTIONS_QUERY_KEY = 'product_options' as const;
+export const optionsQueryKeys = queryKeysFactory(OPTIONS_QUERY_KEY);
 
 const productAttributesQueryKey = (productId: string) => [
-  "product",
+  'product',
   productId,
-  "product-attributes",
-]
+  'product-attributes'
+];
 
 export const useCreateProductOption = (
   productId: string,
   options?: UseMutationOptions<any, FetchError, any>
 ) => {
   return useMutation({
+    // migrated via Story 8.3 (FR-Ga.2; pattern from Story 8.1 Golden PR)
     mutationFn: (payload: HttpTypes.AdminCreateProductOption) =>
-      fetchQuery(`/vendor/products/${productId}/options`, {
-        method: "POST",
-        body: payload,
-      }),
+      mercurVendorClient.products.options.create(productId, payload),
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: optionsQueryKeys.lists(),
-      })
+        queryKey: optionsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(productId),
-      })
-      options?.onSuccess?.(data, variables, context)
+        queryKey: productsQueryKeys.detail(productId)
+      });
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useUpdateProductOption = (
   productId: string,
@@ -57,26 +66,23 @@ export const useUpdateProductOption = (
 ) => {
   return useMutation({
     mutationFn: (payload: HttpTypes.AdminUpdateProductOption) =>
-      fetchQuery(`/vendor/products/${productId}/options/${optionId}`, {
-        method: "POST",
-        body: payload,
-      }),
+      mercurVendorClient.products.options.update(productId, optionId, payload),
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: optionsQueryKeys.lists(),
-      })
+        queryKey: optionsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: optionsQueryKeys.detail(optionId),
-      })
+        queryKey: optionsQueryKeys.detail(optionId)
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(productId),
-      })
+        queryKey: productsQueryKeys.detail(productId)
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useDeleteProductOption = (
   productId: string,
@@ -84,26 +90,23 @@ export const useDeleteProductOption = (
   options?: UseMutationOptions<any, FetchError, void>
 ) => {
   return useMutation({
-    mutationFn: () =>
-      fetchQuery(`/vendor/products/${productId}/options/${optionId}`, {
-        method: "DELETE",
-      }),
+    mutationFn: () => mercurVendorClient.products.options.delete(productId, optionId),
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: optionsQueryKeys.lists(),
-      })
+        queryKey: optionsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: optionsQueryKeys.detail(optionId),
-      })
+        queryKey: optionsQueryKeys.detail(optionId)
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(productId),
-      })
+        queryKey: productsQueryKeys.detail(productId)
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useProductVariant = (
   productId: string,
@@ -116,68 +119,49 @@ export const useProductVariant = (
       HttpTypes.AdminProductVariantResponse,
       QueryKey
     >,
-    "queryFn" | "queryKey"
+    'queryFn' | 'queryKey'
   >
 ) => {
   const { data, ...rest } = useQuery({
     queryFn: async () => {
-      const { product } = await fetchQuery(`/vendor/products/${productId}`, {
-        method: "GET",
-        query: {
-          fields:
-            "*variants,*variants.inventory,*variants.inventory.location_levels",
-        },
-      })
+      const { product } = await mercurVendorClient.products.retrieve(productId, {
+        fields: '*variants,*variants.inventory,*variants.inventory.location_levels'
+      });
 
-      const variant = product.variants.find(
+      const variant = product.variants?.find(
         ({ id }: { id: string }) => id === variantId
-      )
+      ) as HttpTypes.AdminProductVariant;
 
-      return { variant }
+      return { variant };
     },
     queryKey: variantsQueryKeys.detail(variantId, query),
-    ...options,
-  })
+    ...options
+  });
 
-  return { ...data, ...rest }
-}
-
-export type ProductVariantsListResponse = {
-  variants: ExtendedAdminProductVariant[]
-  count: number
-  offset: number
-  limit: number
-}
+  return { ...data, ...rest };
+};
 
 export const useProductVariants = (
   productId: string,
   query?: Record<string, string | number | boolean | string[] | object | undefined>,
   options?: Omit<
-    UseQueryOptions<
-      ProductVariantsListResponse,
-      FetchError,
-      ProductVariantsListResponse,
-      QueryKey
-    >,
-    "queryFn" | "queryKey"
+    UseQueryOptions<ProductVariantsListResponse, FetchError, ProductVariantsListResponse, QueryKey>,
+    'queryFn' | 'queryKey'
   >
 ) => {
   const { data, ...rest } = useQuery({
     queryFn: async () => {
-      return await fetchQuery(`/vendor/products/${productId}/variants`, {
-        method: 'GET',
-        query: query as Record<string, string | number | object>
-      });
+      return await mercurVendorClient.products.variants.list(productId, query);
     },
     queryKey: variantsQueryKeys.list({
       productId,
-      ...query,
+      ...query
     }),
-    ...options,
-  })
+    ...options
+  });
 
-  return { ...data, ...rest }
-}
+  return { ...data, ...rest };
+};
 
 export const useCreateProductVariant = (
   productId: string,
@@ -185,22 +169,19 @@ export const useCreateProductVariant = (
 ) => {
   return useMutation({
     mutationFn: (payload: HttpTypes.AdminCreateProductVariant) =>
-      fetchQuery(`/vendor/products/${productId}/variants`, {
-        method: "POST",
-        body: payload,
-      }),
+      mercurVendorClient.products.variants.create(productId, payload),
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.lists(),
-      })
+        queryKey: variantsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(productId),
-      })
-      options?.onSuccess?.(data, variables, context)
+        queryKey: productsQueryKeys.detail(productId)
+      });
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useUpdateProductVariant = (
   productId: string,
@@ -209,26 +190,23 @@ export const useUpdateProductVariant = (
 ) => {
   return useMutation({
     mutationFn: (body: HttpTypes.AdminUpdateProductVariant) =>
-      fetchQuery(`/vendor/products/${productId}/variants/${variantId}`, {
-        method: "POST",
-        body,
-      }),
+      mercurVendorClient.products.variants.update(productId, variantId, body),
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.lists(),
-      })
+        queryKey: variantsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.detail(variantId),
-      })
+        queryKey: variantsQueryKeys.detail(variantId)
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(productId),
-      })
+        queryKey: productsQueryKeys.detail(productId)
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 // TODO: Change this to use endpoint that updates multiple variants at once
 export const useUpdateProductVariantsBatch = (
@@ -237,22 +215,19 @@ export const useUpdateProductVariantsBatch = (
 ) => {
   return useMutation({
     mutationFn: async (variants: Array<{ id: string; [key: string]: any }>) => {
-      const promises = variants.map((variant) => {
-        const { id, ...updateData } = variant
-        return fetchQuery(`/vendor/products/${productId}/variants/${id}`, {
-          method: "POST",
-          body: updateData,
-        })
-      })
+      const promises = variants.map(variant => {
+        const { id, ...updateData } = variant;
+        return mercurVendorClient.products.variants.update(productId, id, updateData);
+      });
 
-      return Promise.all(promises)
+      return Promise.all(promises);
     },
     onSuccess: (data: any, variables: any, context: any) => {
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useProductVariantsInventoryItemsBatch = (
   productId: string,
@@ -263,24 +238,23 @@ export const useProductVariantsInventoryItemsBatch = (
   >
 ) => {
   return useMutation({
-    mutationFn: (payload) =>
-      sdk.admin.product.batchVariantInventoryItems(productId, payload),
+    mutationFn: payload => sdk.admin.product.batchVariantInventoryItems(productId, payload),
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.lists(),
-      })
+        queryKey: variantsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.details(),
-      })
+        queryKey: variantsQueryKeys.details()
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(productId),
-      })
+        queryKey: productsQueryKeys.detail(productId)
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useDeleteVariant = (
   productId: string,
@@ -288,26 +262,23 @@ export const useDeleteVariant = (
   options?: UseMutationOptions<any, FetchError, void>
 ) => {
   return useMutation({
-    mutationFn: () =>
-      fetchQuery(`/vendor/products/${productId}/variants/${variantId}`, {
-        method: "DELETE",
-      }),
+    mutationFn: () => mercurVendorClient.products.variants.delete(productId, variantId),
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.lists(),
-      })
+        queryKey: variantsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.detail(variantId),
-      })
+        queryKey: variantsQueryKeys.detail(variantId)
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(productId),
-      })
+        queryKey: productsQueryKeys.detail(productId)
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useDeleteVariantLazy = (
   productId: string,
@@ -319,38 +290,32 @@ export const useDeleteVariantLazy = (
 ) => {
   return useMutation({
     mutationFn: ({ variantId }) =>
-      fetchQuery(`/vendor/products/${productId}/variants/${variantId}`, {
-        method: "DELETE",
-      }),
+      mercurVendorClient.products.variants.delete(productId, variantId),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.lists(),
-      })
+        queryKey: variantsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: variantsQueryKeys.detail(variables.variantId),
-      })
+        queryKey: variantsQueryKeys.detail(variables.variantId)
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(productId),
-      })
+        queryKey: productsQueryKeys.detail(productId)
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useProductAttributes = (id: string) => {
   const { data, ...rest } = useQuery<ProductAttributesResponse>({
-    queryFn: () =>
-      fetchQuery(`/vendor/products/${id}/applicable-attributes`, {
-        method: "GET",
-        query: { fields: "+is_required" }
-      }),
-    queryKey: productAttributesQueryKey(id),
-  })
+    queryFn: () => mercurVendorClient.products.applicableAttributes(id),
+    queryKey: productAttributesQueryKey(id)
+  });
 
-  return { ...data, ...rest }
-}
+  return { ...data, ...rest };
+};
 
 export const useProduct = (
   id: string,
@@ -362,30 +327,27 @@ export const useProduct = (
       ExtendedAdminProductResponse,
       QueryKey
     >,
-    "queryFn" | "queryKey"
+    'queryFn' | 'queryKey'
   >
 ) => {
   const { data, ...rest } = useQuery({
     queryFn: async () => {
-      const response = await fetchQuery(`/vendor/products/${id}`, {
-        method: "GET",
-        query: query as { [key: string]: string | number },
-      })
+      const response = await mercurVendorClient.products.retrieve(id, query);
 
       return {
         ...response,
-        product: productsImagesFormatter(response.product),
-      }
+        product: productsImagesFormatter(response.product)
+      } as ExtendedAdminProductResponse;
     },
     queryKey: productsQueryKeys.detail(id, query),
-    ...options,
-  })
+    ...options
+  });
 
   return {
     ...data,
-    ...rest,
-  }
-}
+    ...rest
+  };
+};
 
 export const useProducts = (
   query?: HttpTypes.AdminProductListParams & { tag_id?: string | string[] },
@@ -396,43 +358,35 @@ export const useProducts = (
       ExtendedAdminProductListResponse,
       QueryKey
     >,
-    "queryFn" | "queryKey"
+    'queryFn' | 'queryKey'
   >
 ) => {
   const { data, ...rest } = useQuery({
-    queryFn: () => 
-     fetchQuery("/vendor/products", {
-        method: "GET",
-        query: query as Record<string, string | number>,
-      }),
+    queryFn: () => mercurVendorClient.products.list(query),
     queryKey: productsQueryKeys.list(query),
-    ...options,
-  })
+    ...options
+  });
 
-  return { ...data, ...rest }
-}
+  return { ...data, ...rest };
+};
 
 export const useCreateProduct = (
   options?: UseMutationOptions<HttpTypes.AdminProductResponse, FetchError, any>
 ) => {
   return useMutation({
-    mutationFn: async (payload) =>
-      await fetchQuery("/vendor/products", {
-        method: "POST",
-        body: payload,
-      }),
+    mutationFn: async payload => await mercurVendorClient.products.create(payload),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.lists(),
-      })
+        queryKey: productsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: inventoryItemsQueryKeys.lists(),
-      })
-      options?.onSuccess?.(data, variables, context)
+        queryKey: inventoryItemsQueryKeys.lists()
+      });
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useUpdateProduct = (
   id: string,
@@ -443,90 +397,70 @@ export const useUpdateProduct = (
   >
 ) => {
   return useMutation({
-    mutationFn: async (payload) => {
-      return fetchQuery(`/vendor/products/${id}`, {
-        method: "POST",
-        body: {
-          ...payload,
-        },
-      })
+    mutationFn: async payload => {
+      return mercurVendorClient.products.update(id, payload);
     },
     onSuccess: async (data, variables, context) => {
       await queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.lists(),
-      })
+        queryKey: productsQueryKeys.lists()
+      });
       await queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(id),
-      })
+        queryKey: productsQueryKeys.detail(id)
+      });
       await queryClient.invalidateQueries({
-        queryKey: productAttributesQueryKey(id),
-      })
+        queryKey: productAttributesQueryKey(id)
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useDeleteProduct = (
   id: string,
-  options?: UseMutationOptions<
-    HttpTypes.AdminProductDeleteResponse,
-    FetchError,
-    void
-  >
+  options?: UseMutationOptions<HttpTypes.AdminProductDeleteResponse, FetchError, void>
 ) => {
   return useMutation({
-    mutationFn: () =>
-      fetchQuery(`/vendor/products/${id}`, {
-        method: "DELETE",
-      }),
+    mutationFn: () => mercurVendorClient.products.delete(id),
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.lists(),
-      })
+        queryKey: productsQueryKeys.lists()
+      });
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.detail(id),
-      })
+        queryKey: productsQueryKeys.detail(id)
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useBulkDeleteProducts = (
-  options?: UseMutationOptions<
-    HttpTypes.AdminProductDeleteResponse[],
-    FetchError,
-    string[]
-  >
+  options?: UseMutationOptions<HttpTypes.AdminProductDeleteResponse[], FetchError, string[]>
 ) => {
   return useMutation({
     mutationFn: async (productIds: string[]) => {
-      const deletePromises = productIds.map((id) =>
-        fetchQuery(`/vendor/products/${id}`, {
-          method: "DELETE",
-        })
-      )
-      return Promise.all(deletePromises)
+      const deletePromises = productIds.map(id => mercurVendorClient.products.delete(id));
+      return Promise.all(deletePromises);
     },
     onSuccess: (data: any, variables: any, context: any) => {
       queryClient.invalidateQueries({
-        queryKey: productsQueryKeys.lists(),
-      })
+        queryKey: productsQueryKeys.lists()
+      });
 
       variables.forEach((id: string) => {
         queryClient.invalidateQueries({
-          queryKey: productsQueryKeys.detail(id),
-        })
-      })
+          queryKey: productsQueryKeys.detail(id)
+        });
+      });
 
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useExportProducts = (
   query?: HttpTypes.AdminProductListParams,
@@ -537,18 +471,13 @@ export const useExportProducts = (
   >
 ) => {
   return useMutation({
-    mutationFn: (payload) =>
-      fetchQuery("/vendor/products/export", {
-        method: "POST",
-        body: payload,
-        query: query as { [key: string]: string },
-      }),
+    mutationFn: payload => mercurVendorClient.products.export(payload, query),
     onSuccess: (data, variables, context) => {
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
 export const useImportProducts = (
   options?: UseMutationOptions<
@@ -558,22 +487,20 @@ export const useImportProducts = (
   >
 ) => {
   return useMutation({
-    mutationFn: (payload) => importProductsQuery(payload.file),
+    mutationFn: payload => importProductsQuery(payload.file),
     onSuccess: (data, variables, context) => {
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};
 
-export const useConfirmImportProducts = (
-  options?: UseMutationOptions<{}, FetchError, string>
-) => {
+export const useConfirmImportProducts = (options?: UseMutationOptions<{}, FetchError, string>) => {
   return useMutation({
-    mutationFn: (payload) => sdk.admin.product.confirmImport(payload),
+    mutationFn: payload => sdk.admin.product.confirmImport(payload),
     onSuccess: (data, variables, context) => {
-      options?.onSuccess?.(data, variables, context)
+      options?.onSuccess?.(data, variables, context);
     },
-    ...options,
-  })
-}
+    ...options
+  });
+};

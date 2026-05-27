@@ -8,7 +8,7 @@ import {
   UseQueryOptions
 } from '@tanstack/react-query';
 
-import { fetchQuery } from '../../lib/client';
+import { mercurVendorClient } from '../../lib/mercur-vendor-client';
 import { queryClient } from '../../lib/query-client';
 import { queryKeysFactory } from '../../lib/query-key-factory';
 import { VendorPromotionRuleValueParams } from '../../types/promotion';
@@ -51,11 +51,8 @@ export const usePromotion = (
 ) => {
   const { data, ...rest } = useQuery({
     queryKey: promotionsQueryKeys.detail(id),
-    queryFn: async () =>
-      fetchQuery(`/vendor/promotions/${id}`, {
-        method: 'GET',
-        query: { fields: '+status' }
-      }),
+    // migrated via Story 8.3 (FR-Ga.2; pattern from Story 8.1 Golden PR)
+    queryFn: async () => mercurVendorClient.promotions.retrieve(id),
     ...options
   });
 
@@ -68,7 +65,7 @@ export const usePromotionRules = (
   query?: HttpTypes.AdminGetPromotionRuleParams,
   options?: Omit<
     UseQueryOptions<
-      HttpTypes.AdminGetPromotionRuleParams,
+      HttpTypes.AdminPromotionRuleListResponse,
       FetchError,
       HttpTypes.AdminPromotionRuleListResponse,
       QueryKey
@@ -85,13 +82,7 @@ export const usePromotionRules = (
 
   const { data, ...rest } = useQuery({
     queryKey: promotionsQueryKeys.listRules(id, ruleType, query),
-    queryFn: async () =>
-      fetchQuery(`/vendor/promotions/${id}/${ruleType}`, {
-        method: 'GET',
-        query: query as {
-          [key: string]: string | number;
-        }
-      }),
+    queryFn: async () => mercurVendorClient.promotions.rules(id, ruleType, query),
     ...options
   });
 
@@ -112,11 +103,7 @@ export const usePromotions = (
 ) => {
   const { data, ...rest } = useQuery({
     queryKey: promotionsQueryKeys.list(query),
-    queryFn: async () =>
-      fetchQuery('/vendor/promotions', {
-        method: 'GET',
-        query: query as { [key: string]: string | number }
-      }),
+    queryFn: async () => mercurVendorClient.promotions.list(query),
     ...options
   });
 
@@ -138,13 +125,7 @@ export const usePromotionRuleAttributes = (
 ) => {
   const { data, ...rest } = useQuery({
     queryKey: promotionsQueryKeys.listRuleAttributes(ruleType, promotionType),
-    queryFn: async () =>
-      fetchQuery(`/vendor/promotions/rule-attribute-options/${ruleType}`, {
-        method: 'GET',
-        query: {
-          promotion_type: promotionType as string
-        }
-      }),
+    queryFn: async () => mercurVendorClient.promotions.ruleAttributes(ruleType, promotionType),
     ...options
   });
 
@@ -167,15 +148,7 @@ export const usePromotionRuleValues = (
 ) => {
   const { data, ...rest } = useQuery({
     queryKey: promotionsQueryKeys.listRuleValues(ruleType, ruleValue, query || {}),
-    queryFn: async () =>
-      await fetchQuery(`/vendor/promotions/rule-value-options/${ruleType}/${ruleValue}`, {
-        method: 'GET',
-        query: {
-          ...(query as {
-            [key: string]: string | number;
-          })
-        }
-      }),
+    queryFn: async () => await mercurVendorClient.promotions.ruleValues(ruleType, ruleValue, query),
     ...options
   });
 
@@ -187,10 +160,7 @@ export const useDeletePromotion = (
   options?: UseMutationOptions<HttpTypes.DeleteResponse<'promotion'>, FetchError, void>
 ) => {
   return useMutation({
-    mutationFn: () =>
-      fetchQuery(`/vendor/promotions/${id}`, {
-        method: 'DELETE'
-      }),
+    mutationFn: () => mercurVendorClient.promotions.delete(id),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
         queryKey: promotionsQueryKeys.lists()
@@ -213,11 +183,7 @@ export const useCreatePromotion = (
   >
 ) => {
   return useMutation({
-    mutationFn: payload =>
-      fetchQuery('/vendor/promotions', {
-        method: 'POST',
-        body: payload
-      }),
+    mutationFn: payload => mercurVendorClient.promotions.create(payload),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
         queryKey: promotionsQueryKeys.lists()
@@ -240,11 +206,7 @@ export const useUpdatePromotion = (
   >
 ) => {
   return useMutation({
-    mutationFn: payload =>
-      fetchQuery(`/vendor/promotions/${id}`, {
-        method: 'POST',
-        body: payload
-      }),
+    mutationFn: payload => mercurVendorClient.promotions.update(id, payload),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
         queryKey: promotionsQueryKeys.all
@@ -267,11 +229,7 @@ export const useRemovePromotionFromCampaign = (
   options?: UseMutationOptions<HttpTypes.AdminPromotionResponse, FetchError, void>
 ) => {
   return useMutation({
-    mutationFn: () =>
-      fetchQuery(`/vendor/promotions/${promotionId}`, {
-        method: 'POST',
-        body: { campaign_id: null }
-      }),
+    mutationFn: () => mercurVendorClient.promotions.removeFromCampaign(promotionId),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
         queryKey: promotionsQueryKeys.all
@@ -299,11 +257,7 @@ export const usePromotionAddRules = (
   >
 ) => {
   return useMutation({
-    mutationFn: payload =>
-      fetchQuery(`/vendor/promotions/${id}/${ruleType}/batch`, {
-        method: 'POST',
-        body: { create: payload.rules }
-      }),
+    mutationFn: payload => mercurVendorClient.promotions.rulesBatch.add(id, ruleType, payload),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
         queryKey: promotionsQueryKeys.all
@@ -329,11 +283,7 @@ export const usePromotionRemoveRules = (
   >
 ) => {
   return useMutation({
-    mutationFn: payload =>
-      fetchQuery(`/vendor/promotions/${id}/${ruleType}/batch`, {
-        method: 'POST',
-        body: { delete: payload.rules }
-      }),
+    mutationFn: payload => mercurVendorClient.promotions.rulesBatch.remove(id, ruleType, payload),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
         queryKey: promotionsQueryKeys.all
@@ -355,28 +305,8 @@ export const usePromotionUpdateRules = (
   >
 ) => {
   return useMutation({
-    mutationFn: async payload => {
-      const { rules } = await fetchQuery(`/vendor/promotions/${id}/${ruleType}`, {
-        method: 'GET'
-      });
-
-      const rulesIds = rules.map((rule: any) => rule.id);
-      await fetchQuery(`/vendor/promotions/${id}/${ruleType}/batch`, {
-        method: 'POST',
-        body: { delete: rulesIds }
-      });
-
-      return fetchQuery(`/vendor/promotions/${id}/${ruleType}/batch`, {
-        method: 'POST',
-        body: {
-          create: payload.rules.map(rule => ({
-            attribute: rule.attribute,
-            operator: rule.operator,
-            values: rule.values
-          }))
-        }
-      });
-    },
+    mutationFn: async payload =>
+      mercurVendorClient.promotions.rulesBatch.replace(id, ruleType, payload),
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries({
         queryKey: promotionsQueryKeys.all
