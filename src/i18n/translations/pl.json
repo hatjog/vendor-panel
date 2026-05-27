@@ -15,6 +15,47 @@
       }
     }
   },
+  "security": {
+    "domain": "Bezpieczeństwo",
+    "intro": "Te urządzenia mają aktywną sesję. To normalne. Możesz wylogować dowolne z nich poniżej.",
+    "sessionsHeading": "Aktywne sesje",
+    "empty": "Brak aktywnych sesji do wyświetlenia.",
+    "loadError": "Nie udało się załadować sesji. Spróbuj odświeżyć stronę.",
+    "retry": "Ponów",
+    "revoke_session_aria": "Wyloguj sesję na {{device}}",
+    "session": {
+      "last_active": "Ostatnia aktywność {{time}}",
+      "current_badge": "Ta sesja",
+      "unknownRegion": "Region niedostępny",
+      "unknownLastActive": "niedawno"
+    },
+    "modal": {
+      "cancel": "Anuluj",
+      "loading": "Wylogowywanie...",
+      "other": {
+        "title": "Wylogować tę sesję?",
+        "body": "Session on device {{device}} (last active {{lastActive}}) will be terminated."
+      },
+      "current": {
+        "title": "Wylogować to urządzenie?",
+        "tier1": "Wylogujesz się natychmiast.",
+        "tier2": "Edytujesz: {{label}}. Zostanie autozapisane.",
+        "tier2_fallback": "Edytujesz swój workspace.",
+        "tier2_fallback_label": "swój workspace",
+        "tier3": "Czy zapisałaś niewysłaną pracę?"
+      },
+      "confirm": {
+        "other": "Wyloguj sesję",
+        "current": "Wyloguj się i przekieruj"
+      }
+    },
+    "toast": {
+      "success": "Sesja na {{device}} wygasła.",
+      "error_generic": "Nie udało się wylogować tej sesji. Odśwież listę.",
+      "error_rate_limited": "Spróbuj ponownie za chwilę.",
+      "error_server": "Problem z serwerem. Spróbujemy automatycznie."
+    }
+  },
   "general": {
     "ascending": "Rosnąco",
     "descending": "Malejąco",

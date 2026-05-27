@@ -15,6 +15,47 @@
       }
     }
   },
+  "security": {
+    "domain": "Security",
+    "intro": "These devices have an active session. This is normal. You can log out any of them below.",
+    "sessionsHeading": "Active sessions",
+    "empty": "No active sessions to display.",
+    "loadError": "Could not load sessions. Try refreshing the page.",
+    "retry": "Retry",
+    "revoke_session_aria": "Log out session on {{device}}",
+    "session": {
+      "last_active": "Last active {{time}}",
+      "current_badge": "This session",
+      "unknownRegion": "Region unavailable",
+      "unknownLastActive": "recently"
+    },
+    "modal": {
+      "cancel": "Cancel",
+      "loading": "Logging out...",
+      "other": {
+        "title": "Log out this session?",
+        "body": "Session on device {{device}} (last active {{lastActive}}) will be terminated."
+      },
+      "current": {
+        "title": "Log out of this device?",
+        "tier1": "You will be logged out immediately.",
+        "tier2": "You are editing: {{label}}. It will be autosaved.",
+        "tier2_fallback": "You are editing your workspace.",
+        "tier2_fallback_label": "your workspace",
+        "tier3": "Have you saved unsent work?"
+      },
+      "confirm": {
+        "other": "Log out session",
+        "current": "Log out and redirect"
+      }
+    },
+    "toast": {
+      "success": "Session on {{device}} expired.",
+      "error_generic": "Could not log out this session. Refresh the list.",
+      "error_rate_limited": "Try again in a moment.",
+      "error_server": "Server problem. We will try automatically."
+    }
+  },
   "general": {
     "ascending": "Ascending",
     "descending": "Descending",
