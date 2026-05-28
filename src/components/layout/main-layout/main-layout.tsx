@@ -13,6 +13,7 @@ import {
   Star,
   ListCheckbox,
   ChatBubbleLeftRight,
+  LockClosedSolid,
 } from "@medusajs/icons"
 import { Divider, Text, clx } from "@medusajs/ui"
 import { Collapsible as RadixCollapsible } from "radix-ui"
@@ -210,6 +211,11 @@ const useCoreRoutes = (): Omit<INavItem, "pathname">[] => {
           to: "/requests/orders",
         },
       ],
+    },
+    {
+      icon: <LockClosedSolid />,
+      label: t("security.domain"),
+      to: "/security",
     },
   ]
 }
