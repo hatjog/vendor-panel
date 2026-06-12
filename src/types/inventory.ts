@@ -1,11 +1,14 @@
-import { HttpTypes, InventoryTypes } from "@medusajs/types"
+import { InventoryTypes, StockLocationDTO } from "@medusajs/types"
 
 export interface InventoryItemLocationLevel
   extends InventoryTypes.InventoryLevelDTO {
-  stock_locations: HttpTypes.AdminStockLocation[]
+  stock_locations: StockLocationDTO[]
   reserved_quantity: number
   stocked_quantity: number
   available_quantity: number
+  created_at: Date
+  updated_at: Date
+  deleted_at: Date | null
 }
 
 export interface InventoryItemWithLevels {

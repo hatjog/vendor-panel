@@ -174,7 +174,7 @@ export const useInventoryItemLevels = (
       HttpTypes.AdminInventoryLevelListResponse,
       FetchError,
       HttpTypes.AdminInventoryLevelListResponse & {
-        location_levels: any[];
+        location_levels: InventoryItemLocationLevel[];
       },
       QueryKey
     >,

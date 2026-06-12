@@ -10,7 +10,11 @@ import {
 import { fetchQuery } from "../../lib/client"
 import { queryClient } from "../../lib/query-client"
 import { queryKeysFactory } from "../../lib/query-key-factory"
-import { StoreVendor, TeamMemberProps } from "../../types/user"
+import { TeamMemberProps, VendorSeller } from "../../types/user"
+
+type VendorTeamMember = TeamMemberProps & {
+  email: string
+}
 
 const USERS_QUERY_KEY = "users" as const
 const usersQueryKeys = {
@@ -23,7 +27,7 @@ export const useMe = (
     HttpTypes.AdminUserResponse,
     FetchError,
     HttpTypes.AdminUserResponse & {
-      seller: StoreVendor
+      seller: VendorSeller
     },
     QueryKey
   >
@@ -51,7 +55,7 @@ export const useUpdateMe = (
   options?: UseMutationOptions<
     HttpTypes.AdminUserResponse,
     FetchError,
-    StoreVendor,
+    VendorSeller,
     QueryKey
   >
 ) => {
@@ -183,7 +187,7 @@ export const useUsers = (
     UseQueryOptions<
       HttpTypes.AdminUserListResponse,
       FetchError,
-      HttpTypes.AdminUserListResponse & { members: any[] },
+      HttpTypes.AdminUserListResponse & { members: VendorTeamMember[] },
       QueryKey
     >,
     "queryFn" | "queryKey"
