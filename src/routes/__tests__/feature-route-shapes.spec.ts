@@ -91,4 +91,17 @@ describe('GP vendor feature-routes — smoke + data-shape (zod runtime schema = 
       }
     }
   );
+
+  it('training cert route is gated instead of simulating a browser upload', () => {
+    const source = readFileSync(
+      path.join(process.cwd(), 'src/routes/training-cert/training-cert-upload.tsx'),
+      'utf8'
+    );
+
+    expect(source).toContain('upload_unavailable');
+    expect(source).toContain('S2S HMAC-only');
+    expect(source).not.toContain('type="file"');
+    expect(source).not.toContain('Upload certificate');
+    expect(source).not.toContain('setStatus("pending_review")');
+  });
 });
