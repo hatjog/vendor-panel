@@ -25,4 +25,28 @@ describe("debug SDK handle gating", () => {
     expect(tsupConfigSource).toContain('"import.meta.env.DEV": "false"')
     expect(tsupConfigSource).toContain("minifySyntax: true")
   })
+
+  it("simulates prod bundler substitution: __sdk block is dead code when DEV=false", () => {
+    // Simulate what tsup does: replace import.meta.env.DEV with false
+    // (minifySyntax: true then eliminates the dead branch)
+    const prodSimulated = clientSource.replace(
+      /import\.meta\.env\.DEV/g,
+      "false",
+    )
+    // After substitution the condition becomes: typeof window !== "undefined" && false
+    // which is always false — so a naive evaluator eliminates the branch.
+    // We assert that the __sdk assignment only appears inside the DEV-gated block
+    // (i.e. no __sdk assignment outside the gated if-block).
+    const sdkBlockMatch = prodSimulated.match(
+      /if\s*\(\s*typeof window !== ['"]undefined['"]\s*&&\s*false\s*\)\s*\{([^}]*)\}/s,
+    )
+    expect(sdkBlockMatch).not.toBeNull()
+
+    // Remove the dead block from source — what remains must NOT contain __sdk
+    const outsideBlock = prodSimulated.replace(
+      /if\s*\(\s*typeof window !== ['"]undefined['"]\s*&&\s*false\s*\)\s*\{[^}]*\}/gs,
+      "",
+    )
+    expect(outsideBlock).not.toContain("__sdk")
+  })
 })
