@@ -13,4 +13,8 @@ export default defineConfig({
   ],
   tsconfig: "tsconfig.build.json",
   clean: true,
+  minifySyntax: true,
+  define: {
+    "import.meta.env.DEV": "false",
+  },
 })

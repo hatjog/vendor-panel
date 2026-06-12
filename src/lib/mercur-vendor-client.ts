@@ -2,6 +2,7 @@ import type { HttpTypes } from '@medusajs/types';
 
 import type { CustomerGroupListResponse } from '../types/customer-group';
 import type { ExtendedAdminOrderResponse, OrderCommission } from '../types/order';
+import type { InventoryItemLocationLevel } from '../types/inventory';
 import type {
   ExtendedAdminProductListResponse,
   ExtendedAdminProductResponse,
@@ -221,14 +222,11 @@ export const mercurVendorClient = {
       }),
     locationLevels: {
       list: (inventoryItemId: string, query?: VendorQuery) =>
-        // M-02 (review-fix 2026-05-27): `location_levels: any[]` preserved as
-        // Deferred:architectural — downstream `ExtendedLocationLevel` /
-        // `AdminInventoryLevel` consumer types diverge from the upstream
-        // `InventoryItemLocationLevel` shape (stock_locations + created_at /
-        // updated_at / deleted_at field-type drift). Tightening here cascades
-        // into reservation-edit + location-list table types out-of-scope for
-        // Story 8.3; routed to Story 8.3.1 / Sprint 5 hardening.
-        vendorFetch<HttpTypes.AdminInventoryLevelListResponse & { location_levels: any[] }>({
+        vendorFetch<
+          HttpTypes.AdminInventoryLevelListResponse & {
+            location_levels: InventoryItemLocationLevel[];
+          }
+        >({
           method: 'GET',
           path: `/vendor/inventory-items/${inventoryItemId}/location-levels`,
           query

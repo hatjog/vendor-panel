@@ -36,6 +36,8 @@ export interface StoreVendor {
   store_status?: "open" | "suspended"
 }
 
+export type VendorSeller = StoreVendor
+
 export interface TeamMemberProps {
   id: string
   seller_id: string
