@@ -6,6 +6,12 @@ export interface InventoryItemLocationLevel
   reserved_quantity: number
   stocked_quantity: number
   available_quantity: number
+  // NOTE: Medusa's own `AdminInventoryLevel` declares these as `Date`, and
+  // `EditReservationForm` consumes this type where an `AdminInventoryLevel[]`
+  // is required — so they MUST stay `Date` here to keep the assignment typed
+  // (removing them regresses the build). Over the HTTP boundary the values
+  // actually arrive as ISO strings; reconciling that real string-vs-Date drift
+  // belongs upstream in @medusajs/types and is deferred (architectural).
   created_at: Date
   updated_at: Date
   deleted_at: Date | null
