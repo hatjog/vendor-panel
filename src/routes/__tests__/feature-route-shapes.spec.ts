@@ -102,6 +102,7 @@ describe('GP vendor feature-routes — smoke + data-shape (zod runtime schema = 
     expect(source).toContain('S2S HMAC-only');
     expect(source).not.toContain('type="file"');
     expect(source).not.toContain('Upload certificate');
-    expect(source).not.toContain('setStatus("pending_review")');
+    // Guard catches both quote styles to prevent setStatus regression.
+    expect(source).not.toMatch(/setStatus\(["']pending_review["']\)/);
   });
 });
