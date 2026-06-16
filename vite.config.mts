@@ -1,7 +1,44 @@
 import inject from "@medusajs/admin-vite-plugin"
 import react from "@vitejs/plugin-react"
-import { defineConfig, loadEnv } from "vite"
+import { defineConfig, loadEnv, type Plugin } from "vite"
 import inspect from "vite-plugin-inspect"
+
+type MercurVirtualModulesOptions = {
+  backendUrl: string
+  storefrontUrl: string
+  base: string
+}
+
+function mercurVirtualModulesPlugin({
+  backendUrl,
+  storefrontUrl,
+  base,
+}: MercurVirtualModulesOptions): Plugin {
+  const modules: Record<string, string> = {
+    "virtual:mercur/config": `export default ${JSON.stringify({
+      backendUrl,
+      storefrontUrl,
+      base,
+      i18n: {},
+    })}`,
+    "virtual:mercur/routes": "export const customRoutes = []",
+    "virtual:mercur/components": "export default []",
+    "virtual:mercur/menu-items": "export default []",
+    "virtual:mercur/i18n": "export default {}",
+  }
+
+  return {
+    name: "gp-mercur-virtual-modules",
+    resolveId(id) {
+      if (Object.hasOwn(modules, id)) {
+        return id
+      }
+    },
+    load(id) {
+      return modules[id]
+    },
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -26,6 +63,11 @@ export default defineConfig(({ mode }) => {
     plugins: [
       inspect(),
       react(),
+      mercurVirtualModulesPlugin({
+        backendUrl: BACKEND_URL,
+        storefrontUrl: STOREFRONT_URL,
+        base: BASE,
+      }),
       inject({
         sources,
       }),
@@ -58,6 +100,7 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       entries: [],
+      exclude: ["@mercurjs/vendor"],
       include: ["recharts"],
     },
   }
