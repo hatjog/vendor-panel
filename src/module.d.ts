@@ -33,3 +33,34 @@ declare module "virtual:medusa/widgets" {
   const widgetModule: WidgetModule
   export default widgetModule
 }
+
+declare module "virtual:mercur/config" {
+  const config: {
+    backendUrl?: string
+    storefrontUrl?: string
+    base?: string
+    i18n?: {
+      defaultLanguage?: string
+    }
+  }
+  export default config
+}
+
+declare module "virtual:mercur/routes" {
+  export const customRoutes: unknown[]
+}
+
+declare module "virtual:mercur/components" {
+  const components: unknown[]
+  export default components
+}
+
+declare module "virtual:mercur/menu-items" {
+  const menuItems: unknown[]
+  export default menuItems
+}
+
+declare module "virtual:mercur/i18n" {
+  const resources: Record<string, unknown>
+  export default resources
+}
