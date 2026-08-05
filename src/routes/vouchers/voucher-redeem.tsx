@@ -203,6 +203,14 @@ export const VoucherRedeem = () => {
       <p className="mt-1 text-gray-600">{t("voucher.redeem.subtitle")}</p>
 
       <form onSubmit={onLookup} className="mt-6 flex gap-2">
+        {/*
+          Obrys pola i kolor podpowiedzi są ZMIERZONE, nie domyślne:
+          `border-gray-300` dawało 1.47:1 (SC 1.4.11 wymaga 3:1 dla obrysu
+          elementu interaktywnego), a domyślny placeholder Tailwinda
+          (`gray-400`) 2.55:1 przy progu 4.5:1 (SC 1.4.3). Pilnuje tego bramka
+          `_grow/tools/validate_vendor_panel_voucher_contrast.py`, która czyta
+          TE KLASY, a nie ręczną listę par (review-fix cyklu 1, MEDIUM-2).
+        */}
         <input
           type="text"
           inputMode="text"
@@ -211,7 +219,7 @@ export const VoucherRedeem = () => {
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder={t("voucher.redeem.code_placeholder")}
-          className="flex-1 rounded border border-gray-300 px-3 py-2"
+          className="flex-1 rounded border border-gray-500 px-3 py-2 placeholder:text-gray-600"
           aria-label={t("voucher.redeem.code_label")}
         />
         <button
@@ -344,12 +352,21 @@ export const VoucherRedeem = () => {
             idempotencji; stan końcowy jest w obu przypadkach `claimed`,
             a fakt powtórzenia niesie zdanie w nagłówku powyżej.
           */}
-          <p>
-            {t("voucher.redeem.transition", {
-              prior: statusLabel(redeem.envelope.prior_status),
-              next: statusLabel("claimed"),
-            })}
-          </p>
+          {/*
+            Zdanie o PRZEJŚCIU pokazuje się wyłącznie wtedy, gdy przejście
+            faktycznie zaszło. W ścieżce idempotentnej (`prior_status` już jest
+            `claimed`) poprzednia wersja pisała „Stan vouchera zmienił się z
+            »Zrealizowany« na »Zrealizowany«." — zdanie poprawne językowo,
+            opisujące zmianę, której nie było (review-fix cyklu 1, LOW-2).
+          */}
+          {redeem.envelope.prior_status !== "claimed" && !redeem.idempotent && (
+            <p>
+              {t("voucher.redeem.transition", {
+                prior: statusLabel(redeem.envelope.prior_status),
+                next: statusLabel("claimed"),
+              })}
+            </p>
+          )}
           <p>
             {t("voucher.redeem.audit_reference", {
               id: redeem.envelope.audit_log_id,

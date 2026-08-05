@@ -96,7 +96,7 @@ describe("AC2 — wszystkie teksty przez i18n, z polskimi tłumaczeniami", () =>
     expect(screen.getByPlaceholderText("Kod vouchera")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Sprawdź kod" })).toBeTruthy()
 
-    assertNoRawKeysNorEnglishFallback(container)
+    assertNoRawKeysNorMissingSentinel(container)
   })
 
   it("komunikat o zbyt krótkim kodzie jest polskim zdaniem w roli alert", async () => {
@@ -194,7 +194,7 @@ describe("AC2 — wszystkie teksty przez i18n, z polskimi tłumaczeniami", () =>
     // Identyfikator audytu zostaje, ale jako informacja użytkowa ze zdaniem.
     expect(done.textContent).toContain("Numer zgłoszenia do wsparcia: aud_123")
 
-    assertNoRawKeysNorEnglishFallback(container)
+    assertNoRawKeysNorMissingSentinel(container)
   })
 })
 
@@ -307,6 +307,40 @@ describe("AC4 — stan komunikowany kolorem I słowem, nigdy samym kolorem (WCAG
       .toBeTruthy()
     // `already_claimed` NIE jest stanem vouchera i nie może wyciec na ekran.
     expect(done.textContent).not.toContain("already_claimed")
+    // Zdanie o PRZEJŚCIU nie może opisywać zmiany, która nie zaszła
+    // (review-fix cyklu 1, LOW-2): tu `prior_status` to już `claimed`.
+    expect(done.textContent).not.toContain("Stan vouchera zmienił się")
+    // Numer zgłoszenia zostaje — kosmetolożka podaje go wsparciu.
+    expect(within(done).getByText(/aud_9/)).toBeTruthy()
+  })
+
+  it("zdanie o przejściu stanu POJAWIA SIĘ, gdy przejście faktycznie zaszło", async () => {
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockResolvedValueOnce({
+        idempotent: false,
+        envelope: {
+          audit_log_id: "aud_10",
+          vendor_id: "ven_1",
+          seller_id: "sel_1",
+          market_id: null,
+          code: CODE,
+          prior_status: "idle",
+          new_status: "claimed",
+          claimed_at: "2026-08-05T10:00:00.000Z",
+        },
+      })
+    renderScreen()
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+
+    const done = await screen.findByRole("status")
+    // Kontrola dodatnia do asercji wyżej: bez niej „nigdy nie pokazuj zdania”
+    // przechodziłoby oba testy, czyli nie mierzyłoby niczego.
+    expect(done.textContent).toContain("Stan vouchera zmienił się")
   })
 })
 
@@ -314,12 +348,21 @@ describe("AC4 — stan komunikowany kolorem I słowem, nigdy samym kolorem (WCAG
  * Żaden widoczny tekst nie może być surowym kluczem i18n ani sentynelem
  * brakującego tłumaczenia. To jest ta asercja, która odróżnia „klucz istnieje”
  * od „klucz się rozwiązuje w tym namespace, w którym jest wołany”.
+ *
+ * CZEGO TEN HELPER NIE MIERZY (review-fix cyklu 1, LOW-1): angielskiego
+ * fallbacku. `parseMissingKeyHandler` odpala się dopiero, gdy klucza nie ma
+ * TAKŻE w `en.json` — klucz obecny po angielsku, a brakujący po polsku,
+ * rozwinie się do angielskiego napisu bez `__MISSING__` i bez surowego klucza.
+ * Angielski fallback mierzą: jawne asercje na POLSKIE ZDANIA w testach powyżej
+ * oraz parity `pl` ↔ `en` (`validate-translations.spec.ts` i bramka
+ * `_grow/tools/validate_vendor_panel_voucher_i18n.py`). Nazwa helpera mówi
+ * dokładnie tyle, ile helper sprawdza.
  */
-function assertNoRawKeysNorEnglishFallback(container: HTMLElement) {
+function assertNoRawKeysNorMissingSentinel(container: HTMLElement) {
   const text = container.textContent ?? ""
   expect(text).not.toContain("__MISSING__")
   expect(text).not.toMatch(/\bvoucher\.(redeem|status)\./)
 }
 
 // Utrzymuje wywołanie w użyciu także wtedy, gdy powyższe testy się zmienią.
-export { assertNoRawKeysNorEnglishFallback }
+export { assertNoRawKeysNorMissingSentinel }

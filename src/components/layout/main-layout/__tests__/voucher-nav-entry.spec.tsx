@@ -44,6 +44,7 @@ vi.mock("../../../../lib/client/client", () => ({
   fetchQuery: vi.fn(async () => ({})),
 }))
 
+import { RouteMap } from "../../../../providers/router-provider/route-map"
 import { useCoreRoutes } from "../main-layout"
 import { NavItem } from "../../nav-item"
 import { VoucherRedeem } from "../../../../routes/vouchers/voucher-redeem"
@@ -121,6 +122,39 @@ describe("AC1 — wejście nawigacyjne do ekranu realizacji vouchera", () => {
       ).toBeTruthy()
     })
     expect(screen.queryByText("Ekran startowy panelu")).toBeNull()
+  })
+
+  it("cel pozycji menu istnieje w REALNYM RouteMap, nie tylko w tablicy testu", () => {
+    // Review-fix cyklu 1, MEDIUM-1. Testy powyżej deklarują własną tablicę
+    // <Routes>, więc przechodziłyby także wtedy, gdyby ktoś zmienił w
+    // `route-map.tsx` `path: "vouchers/redeem"` na cokolwiek innego — link
+    // nadal miałby `href="/vouchers/redeem"`, a kosmetolożka po kliknięciu
+    // lądowałaby w `ErrorBoundary`. Ta asercja wiąże `to` pozycji menu z
+    // REALNĄ rejestracją trasy.
+    const flatten = (routes: typeof RouteMap, prefix = ""): string[] =>
+      routes.flatMap((route) => {
+        const raw = route.path ?? ""
+        const here = raw.startsWith("/")
+          ? raw
+          : `${prefix}/${raw}`.replace(/\/+/g, "/")
+        const self = raw ? [here.replace(/\/$/, "")] : []
+        return [
+          ...self,
+          ...flatten((route.children ?? []) as typeof RouteMap,
+            raw ? here : prefix),
+        ]
+      })
+
+    const target = "/vouchers/redeem"
+    expect(flatten(RouteMap)).toContain(target)
+
+    const { unmount } = renderPanel()
+    expect(
+      screen
+        .getByRole("link", { name: "Realizacja voucherów" })
+        .getAttribute("href"),
+    ).toBe(target)
+    unmount()
   })
 
   it("etykieta pozycji jest polska i pochodzi z i18n, nie z literału", () => {
