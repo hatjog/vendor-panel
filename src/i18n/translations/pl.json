@@ -1,5 +1,46 @@
 {
   "$schema": "./$schema.json",
+  "voucher": {
+    "status": {
+      "idle": "Gotowy do realizacji",
+      "consent_pending": "Czeka na zgodę obdarowanej osoby",
+      "claimed": "Zrealizowany",
+      "withdrawn": "Wycofany",
+      "expired": "Termin ważności minął",
+      "unknown": "Stan nierozpoznany — skontaktuj się ze wsparciem"
+    },
+    "redeem": {
+      "nav_label": "Realizacja voucherów",
+      "breadcrumb": "Realizacja vouchera",
+      "title": "Zrealizuj voucher",
+      "subtitle": "Wpisz kod vouchera od klientki, żeby sprawdzić voucher i oznaczyć go jako zrealizowany.",
+      "code_placeholder": "Kod vouchera",
+      "code_label": "Kod vouchera",
+      "lookup": "Sprawdź kod",
+      "looking_up": "Sprawdzam…",
+      "not_found": "Nie znaleziono vouchera o tym kodzie. Sprawdź kod albo poproś klientkę o przesłanie maila z voucherem.",
+      "product": "Usługa",
+      "value": "Wartość",
+      "status": "Stan vouchera",
+      "code": "Kod",
+      "expires_at": "Ważny do",
+      "no_expiry": "Bez terminu ważności",
+      "already_claimed": "Ten voucher został już oznaczony jako zrealizowany.",
+      "redeem_action": "Oznacz jako zrealizowany",
+      "redeeming": "Oznaczam…",
+      "redeemed_now": "Voucher oznaczony jako zrealizowany.",
+      "idempotent_done": "Ten voucher był już zrealizowany wcześniej.",
+      "transition": "Stan vouchera zmienił się z „{{prior}}” na „{{next}}”.",
+      "audit_reference": "Numer zgłoszenia do wsparcia: {{id}}",
+      "reset": "Sprawdź inny kod",
+      "error": {
+        "code_too_short": "Wpisz kod vouchera — potrzebne są co najmniej 3 znaki.",
+        "lookup_failed": "Nie udało się sprawdzić vouchera. Spróbuj ponownie za chwilę.",
+        "empty_response": "Serwer nie odesłał potwierdzenia realizacji. Sprawdź kod ponownie przed kolejną próbą.",
+        "redeem_failed": "Nie udało się oznaczyć vouchera jako zrealizowanego. Spróbuj ponownie za chwilę."
+      }
+    }
+  },
   "vendorPanel": {
     "lockedField": {
       "groupHeader": "{{name}} (zarządzane przez administratora)",

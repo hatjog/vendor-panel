@@ -1,7 +1,16 @@
+import { createRequire } from "node:module"
+
 import inject from "@medusajs/admin-vite-plugin"
 import react from "@vitejs/plugin-react"
 import { defineConfig, loadEnv, type Plugin } from "vite"
 import inspect from "vite-plugin-inspect"
+
+// v1.15.0 Story 5.5 (AC1): `@medusajs/ui` publikuje ESM z importami
+// KATALOGOWYMI (`./components/alert`), których Node nie rozwiązuje pod
+// vitestem — każdy test dotykający warstwy UI wywalał się na etapie zbierania,
+// czyli NIE MIERZYŁ niczego. Mapa `exports` pakietu blokuje jawny deep-import,
+// więc alias musi celować w ŚCIEŻKĘ ROZWIĄZANĄ przez resolver.
+const requireFromHere = createRequire(import.meta.url)
 
 type MercurVirtualModulesOptions = {
   backendUrl: string
@@ -102,6 +111,26 @@ export default defineConfig(({ mode }) => {
       entries: [],
       exclude: ["@mercurjs/vendor"],
       include: ["recharts"],
+    },
+    // v1.15.0 Story 5.5 (AC1/AC2/AC4): testy renderujące realne komponenty
+    // panelu. `@medusajs/ui` publikuje ESM z importami katalogowymi, których
+    // Node nie rozwiązuje — bez zainlinowania przez vite każdy test dotykający
+    // warstwy UI wywala się na etapie zbierania, czyli NIE MIERZY niczego.
+    // Środowisko `jsdom` jest włączane PER PLIK dyrektywą
+    // `// @vitest-environment jsdom`, a nie globalnie: istniejące testy
+    // (m.in. `security-detail.spec.tsx`) celowo stubują `document`/`window`
+    // pod środowiskiem `node` i globalne jsdom zmieniłoby to, co mierzą.
+    test: {
+      // Alias TYLKO na czas testów (nie dotyka builda aplikacji): wariant CJS
+      // ma jawne ścieżki plików, więc nie wpada w import katalogowy.
+      alias: {
+        "@medusajs/ui": requireFromHere.resolve("@medusajs/ui"),
+      },
+      server: {
+        deps: {
+          inline: [/@medusajs/, /@mercurjs/],
+        },
+      },
     },
   }
 })
