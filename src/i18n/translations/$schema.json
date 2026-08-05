@@ -5,6 +5,173 @@
     "$schema": {
       "type": "string"
     },
+    "voucher": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "object",
+          "properties": {
+            "idle": {
+              "type": "string"
+            },
+            "consent_pending": {
+              "type": "string"
+            },
+            "claimed": {
+              "type": "string"
+            },
+            "withdrawn": {
+              "type": "string"
+            },
+            "expired": {
+              "type": "string"
+            },
+            "unknown": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "idle",
+            "consent_pending",
+            "claimed",
+            "withdrawn",
+            "expired",
+            "unknown"
+          ],
+          "additionalProperties": false
+        },
+        "redeem": {
+          "type": "object",
+          "properties": {
+            "nav_label": {
+              "type": "string"
+            },
+            "breadcrumb": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "subtitle": {
+              "type": "string"
+            },
+            "code_placeholder": {
+              "type": "string"
+            },
+            "code_label": {
+              "type": "string"
+            },
+            "lookup": {
+              "type": "string"
+            },
+            "looking_up": {
+              "type": "string"
+            },
+            "not_found": {
+              "type": "string"
+            },
+            "product": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "code": {
+              "type": "string"
+            },
+            "expires_at": {
+              "type": "string"
+            },
+            "no_expiry": {
+              "type": "string"
+            },
+            "already_claimed": {
+              "type": "string"
+            },
+            "redeem_action": {
+              "type": "string"
+            },
+            "redeeming": {
+              "type": "string"
+            },
+            "redeemed_now": {
+              "type": "string"
+            },
+            "idempotent_done": {
+              "type": "string"
+            },
+            "transition": {
+              "type": "string"
+            },
+            "audit_reference": {
+              "type": "string"
+            },
+            "reset": {
+              "type": "string"
+            },
+            "error": {
+              "type": "object",
+              "properties": {
+                "code_too_short": {
+                  "type": "string"
+                },
+                "lookup_failed": {
+                  "type": "string"
+                },
+                "empty_response": {
+                  "type": "string"
+                },
+                "redeem_failed": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code_too_short",
+                "lookup_failed",
+                "empty_response",
+                "redeem_failed"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "nav_label",
+            "breadcrumb",
+            "title",
+            "subtitle",
+            "code_placeholder",
+            "code_label",
+            "lookup",
+            "looking_up",
+            "not_found",
+            "product",
+            "value",
+            "status",
+            "code",
+            "expires_at",
+            "no_expiry",
+            "already_claimed",
+            "redeem_action",
+            "redeeming",
+            "redeemed_now",
+            "idempotent_done",
+            "transition",
+            "audit_reference",
+            "reset",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "status",
+        "redeem"
+      ],
+      "additionalProperties": false
+    },
     "vendorPanel": {
       "type": "object",
       "properties": {
@@ -11293,6 +11460,7 @@
   },
   "required": [
     "$schema",
+    "voucher",
     "vendorPanel",
     "security",
     "general",

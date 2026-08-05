@@ -45,7 +45,14 @@ export const RouteMap: RouteObject[] = [
           {
             path: "vouchers/redeem",
             handle: {
-              breadcrumb: () => "Redeem voucher",
+              // v1.15.0 Story 5.5 (AC2): breadcrumb szedł zahardkodowanym
+              // angielskim literałem, poza i18n. `breadcrumb` jest zwykłą
+              // funkcją WYWOŁYWANĄ POZA drzewem komponentów, więc nie wolno tu
+              // użyć hooka `useTranslation`. Nośnikiem tłumaczeń w tym
+              // kontekście jest instancja `i18next` importowana na górze tego
+              // pliku — dokładnie ten sam wzorzec, którego używają sąsiednie
+              // trasy (`t("security.domain")` niżej).
+              breadcrumb: () => t("voucher.redeem.breadcrumb"),
             },
             errorElement: <ErrorBoundary />,
             lazy: () => import("../../routes/vouchers"),

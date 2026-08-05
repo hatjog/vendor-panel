@@ -14,6 +14,7 @@ import {
   ListCheckbox,
   ChatBubbleLeftRight,
   LockClosedSolid,
+  Gift,
 } from "@medusajs/icons"
 import { Divider, Text, clx } from "@medusajs/ui"
 import { Collapsible as RadixCollapsible } from "radix-ui"
@@ -98,7 +99,13 @@ const Header = () => {
   )
 }
 
-const useCoreRoutes = (): Omit<INavItem, "pathname">[] => {
+/**
+ * v1.15.0 Story 5.5 (AC1): wyeksportowany, żeby test mógł kliknąć w REALNĄ
+ * listę pozycji menu zamiast w jej kopię. Kopia listy w teście dowodziłaby
+ * tylko tego, że kopia istnieje — a dokładnie ta klasa defektu (mechanizm jest,
+ * ale nie odpala się na realnej ścieżce) jest przedmiotem tej story.
+ */
+export const useCoreRoutes = (): Omit<INavItem, "pathname">[] => {
   const { t } = useTranslation()
 
   const unreadMessages = useUnreads()
@@ -120,6 +127,20 @@ const useCoreRoutes = (): Omit<INavItem, "pathname">[] => {
         //   to: "/draft-orders",
         // },
       ],
+    },
+    // v1.15.0 Story 5.5 (AC1, FR-10b): trasa `vouchers/redeem` była
+    // zarejestrowana w `route-map.tsx`, ale w całym `src` nie miała ANI JEDNEGO
+    // odwołania poza rejestracją — ekran dawało się otworzyć wyłącznie wpisując
+    // URL z palca. Pozycja żyje w TYM SAMYM nośniku co reszta menu
+    // (`useCoreRoutes()` / `INavItem`), a nie w równoległym mechanizmie
+    // nawigacji. Etykieta idzie przez `t()`; zahardkodowane etykiety sąsiadów
+    // ("Dashboard", "Reviews", "Requests") są istniejącym dryfem, nie wzorcem.
+    // Pozycja jest BEZWARUNKOWA — widzi ją każdy zalogowany sprzedawca, tak
+    // samo jak Zamówienia; nie ma tu warunku roli ani flagi.
+    {
+      icon: <Gift />,
+      label: t("voucher.redeem.nav_label"),
+      to: "/vouchers/redeem",
     },
     {
       icon: <Tag />,

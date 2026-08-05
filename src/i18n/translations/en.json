@@ -1,5 +1,46 @@
 {
   "$schema": "./$schema.json",
+  "voucher": {
+    "status": {
+      "idle": "Ready to redeem",
+      "consent_pending": "Waiting for the recipient's consent",
+      "claimed": "Redeemed",
+      "withdrawn": "Withdrawn",
+      "expired": "Expired",
+      "unknown": "Unrecognised state — please contact support"
+    },
+    "redeem": {
+      "nav_label": "Voucher redemption",
+      "breadcrumb": "Redeem voucher",
+      "title": "Redeem voucher",
+      "subtitle": "Enter the recipient's voucher code to verify it and mark it as redeemed.",
+      "code_placeholder": "Voucher code",
+      "code_label": "Voucher code",
+      "lookup": "Look up",
+      "looking_up": "Looking up…",
+      "not_found": "No voucher found for this code. Double-check the code or ask the recipient to forward the voucher email.",
+      "product": "Service",
+      "value": "Value",
+      "status": "Voucher state",
+      "code": "Code",
+      "expires_at": "Expires",
+      "no_expiry": "No expiry",
+      "already_claimed": "This voucher is already marked as redeemed.",
+      "redeem_action": "Mark as redeemed",
+      "redeeming": "Marking…",
+      "redeemed_now": "Voucher marked as redeemed.",
+      "idempotent_done": "This voucher was already redeemed earlier.",
+      "transition": "Voucher state changed from “{{prior}}” to “{{next}}”.",
+      "audit_reference": "Support reference: {{id}}",
+      "reset": "Look up another voucher",
+      "error": {
+        "code_too_short": "Enter a voucher code — at least 3 characters are required.",
+        "lookup_failed": "Could not look up the voucher. Please try again in a moment.",
+        "empty_response": "The server did not return a redemption confirmation. Re-check the code before trying again.",
+        "redeem_failed": "Could not mark the voucher as redeemed. Please try again in a moment."
+      }
+    }
+  },
   "vendorPanel": {
     "lockedField": {
       "groupHeader": "{{name}} (managed by administrator)",
