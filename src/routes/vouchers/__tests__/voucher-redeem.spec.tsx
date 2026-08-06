@@ -188,11 +188,22 @@ describe("AC2 — wszystkie teksty przez i18n, z polskimi tłumaczeniami", () =>
     expect(done.textContent).toContain(
       "Stan vouchera zmienił się z „Czeka na zgodę obdarowanej osoby” na „Zrealizowany”.",
     )
-    expect(done.textContent).not.toContain("consent_pending")
-    expect(done.textContent).not.toContain("prior_status")
-    expect(done.textContent).not.toContain("new_status")
-    // Identyfikator audytu zostaje, ale jako informacja użytkowa ze zdaniem.
-    expect(done.textContent).toContain("Numer zgłoszenia do wsparcia: aud_123")
+    // Story 5.6 (AC4/UX-DR11) ZAWĘŻA tę asercję do PIERWSZEGO PLANU. Reguła
+    // 5.5 brzmiała „surowa koperta nie jest treścią dla użytkownika” i taka
+    // zostaje — ale UX-DR11 wymaga, żeby dane audytowe ZESZŁY pod „Szczegóły”,
+    // a nie zniknęły. Asercja na całym `done` mierzyłaby teraz WYCIĘCIE, czyli
+    // dokładnie to, czego AC4 zakazuje.
+    const primary = within(done).getByTestId("voucher-confirmation-primary")
+    expect(primary.textContent).not.toContain("consent_pending")
+    expect(primary.textContent).not.toContain("prior_status")
+    expect(primary.textContent).not.toContain("new_status")
+    // Kontrola przeciwna: koperta NAPRAWDĘ zeszła, a nie została usunięta.
+    const details = within(done).getByTestId("voucher-audit-details")
+    expect(details.textContent).toContain("consent_pending → claimed")
+    // Identyfikator audytu zostaje, ale jako informacja użytkowa ze zdaniem —
+    // pod rozwinięciem, nie na pierwszym planie.
+    expect(details.textContent).toContain("Numer zgłoszenia do wsparcia: aud_123")
+    expect(primary.textContent).not.toContain("aud_123")
 
     assertNoRawKeysNorMissingSentinel(container)
   })
@@ -305,8 +316,11 @@ describe("AC4 — stan komunikowany kolorem I słowem, nigdy samym kolorem (WCAG
     const done = await screen.findByRole("status")
     expect(within(done).getByText("Ten voucher był już zrealizowany wcześniej."))
       .toBeTruthy()
-    // `already_claimed` NIE jest stanem vouchera i nie może wyciec na ekran.
-    expect(done.textContent).not.toContain("already_claimed")
+    // `already_claimed` NIE jest stanem vouchera i nie może wyciec na PIERWSZY
+    // PLAN (zawężenie ze Story 5.6 — w kopercie technicznej pod „Szczegóły”
+    // jest wartością koperty, nie etykietą stanu pokazywaną kosmetolożce).
+    const primary = within(done).getByTestId("voucher-confirmation-primary")
+    expect(primary.textContent).not.toContain("already_claimed")
     // Zdanie o PRZEJŚCIU nie może opisywać zmiany, która nie zaszła
     // (review-fix cyklu 1, LOW-2): tu `prior_status` to już `claimed`.
     expect(done.textContent).not.toContain("Stan vouchera zmienił się")
@@ -341,6 +355,249 @@ describe("AC4 — stan komunikowany kolorem I słowem, nigdy samym kolorem (WCAG
     // Kontrola dodatnia do asercji wyżej: bez niej „nigdy nie pokazuj zdania”
     // przechodziłoby oba testy, czyli nie mierzyłoby niczego.
     expect(done.textContent).toContain("Stan vouchera zmienił się")
+  })
+})
+
+/**
+ * v1.15.0 Story 5.6 — telefon, jedna ręka, potwierdzenie dla człowieka.
+ *
+ * Czego te testy świadomie NIE robią: nie mierzą PIKSELI. `jsdom` nie liczy
+ * layoutu (`getBoundingClientRect()` zwraca zera), więc udawanie pomiaru
+ * rozmiaru byłoby testem, który nie mierzy nic. Rozmiar celu dotykowego
+ * i obecność wskaźnika focusu mierzy bramka repo
+ * (`_grow/tools/validate_vendor_panel_voucher_touch_targets.py`), która czyta
+ * klasy z pliku komponentu. Tutaj mierzone jest to, co jsdom NAPRAWDĘ wie:
+ * struktura drzewa, kolejność focusu i treść zdań.
+ */
+const PHONE_WIDTH = 360
+
+/** Ustawia szerokość telefonu na czas jednego testu. */
+function setPhoneViewport() {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    writable: true,
+    value: PHONE_WIDTH,
+  })
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: (query: string) => ({
+      // Breakpoint `sm:` w Tailwindzie to 640 px — przy 360 px NIE pasuje.
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  })
+}
+
+/**
+ * Klasy `grid-cols-N`, które NIE mają prefiksu breakpointu — czyli te, które
+ * obowiązują na telefonie. Layout mobile-first ma tu dokładnie `grid-cols-1`.
+ */
+function unprefixedGridCols(el: Element): string[] {
+  return el.className
+    .split(/\s+/)
+    .filter((c) => /^grid-cols-\d+$/.test(c))
+}
+
+/** Klasy stałej szerokości w px — nośnik poziomego scrolla przy 360 px. */
+function fixedPxWidths(root: HTMLElement): number[] {
+  return Array.from(root.querySelectorAll<HTMLElement>("[class]"))
+    .flatMap((el) => el.className.split(/\s+/))
+    .map((c) => /^w-\[(\d+)px\]$/.exec(c))
+    .filter((m): m is RegExpExecArray => m !== null)
+    .map((m) => Number(m[1]))
+}
+
+const ENVELOPE_FRESH = {
+  audit_log_id: "aud_360",
+  vendor_id: "ven_1",
+  seller_id: "sel_1",
+  market_id: "bonbeauty",
+  code: CODE,
+  prior_status: "idle",
+  new_status: "claimed",
+  claimed_at: "2026-08-06T12:32:00.000Z",
+}
+
+const ENVELOPE_IDEMPOTENT = {
+  ...ENVELOPE_FRESH,
+  audit_log_id: "aud_361",
+  prior_status: "claimed",
+  new_status: "already_claimed",
+  claimed_at: "2026-08-01T09:05:00.000Z",
+}
+
+async function redeemThrough(
+  user: ReturnType<typeof userEvent.setup>,
+  envelope: typeof ENVELOPE_FRESH,
+  idempotent: boolean,
+) {
+  fetchQuery
+    .mockResolvedValueOnce({ voucher: voucherView("idle") })
+    .mockResolvedValueOnce({ idempotent, envelope })
+  renderScreen()
+  await lookUp(user)
+  await user.click(await screen.findByTestId("voucher-redeem-action"))
+  return screen.findByTestId("voucher-redeem-confirmation")
+}
+
+describe("5.6 / AC1 — layout mobile-first i główny przycisk w zasięgu kciuka", () => {
+  it("przy 360 px metryki vouchera są JEDNOKOLUMNOWE (dwie kolumny dopiero od breakpointu)", async () => {
+    setPhoneViewport()
+    const user = userEvent.setup()
+    fetchQuery.mockResolvedValueOnce({ voucher: voucherView("idle") })
+    renderScreen()
+    await lookUp(user)
+
+    const metrics = await screen.findByTestId("voucher-metrics")
+    // Wariant BEZPREFIKSOWY jest wariantem telefonu — to jest cała definicja
+    // mobile-first. `grid-cols-2` bez prefiksu = layout desktopowy, nawet
+    // jeśli obok stoi `sm:grid-cols-2`.
+    expect(unprefixedGridCols(metrics)).toEqual(["grid-cols-1"])
+    expect(metrics.className).toContain("sm:grid-cols-2")
+  })
+
+  it("główny przycisk realizacji leży POZA kartą metryk i PO niej w drzewie", async () => {
+    setPhoneViewport()
+    const user = userEvent.setup()
+    fetchQuery.mockResolvedValueOnce({ voucher: voucherView("idle") })
+    renderScreen()
+    await lookUp(user)
+
+    const card = await screen.findByTestId("voucher-lookup-card")
+    const action = screen.getByTestId("voucher-redeem-action")
+
+    // Dowodem jest POZYCJA W DRZEWIE, nie obecność klasy: cofnięcie przycisku
+    // do środka karty czerwieni ten test, a klasa `sticky` może zniknąć bez
+    // zmiany werdyktu — dlatego nie jest tu nośnikiem dowodu.
+    expect(card.contains(action)).toBe(false)
+    expect(
+      card.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it("przy 360 px żaden element nie ma stałej szerokości przekraczającej viewport", async () => {
+    setPhoneViewport()
+    const user = userEvent.setup()
+    fetchQuery.mockResolvedValueOnce({ voucher: voucherView("idle") })
+    const { container } = renderScreen()
+    await lookUp(user)
+
+    const tooWide = fixedPxWidths(container).filter((px) => px > PHONE_WIDTH)
+    expect(tooWide).toEqual([])
+  })
+})
+
+describe("5.6 / AC3 — kolejność focusu i przejście focusu na potwierdzenie", () => {
+  it("tab przechodzi ekran w kolejności czytania: kod → sprawdź → zrealizuj", async () => {
+    setPhoneViewport()
+    const user = userEvent.setup()
+    fetchQuery.mockResolvedValueOnce({ voucher: voucherView("idle") })
+    renderScreen()
+    await lookUp(user)
+    await screen.findByTestId("voucher-redeem-action")
+
+    // Punkt startowy to pole kodu — pierwszy element w kolejności czytania.
+    const input = screen.getByLabelText("Kod vouchera")
+    input.focus()
+    expect(document.activeElement).toBe(input)
+    await user.tab()
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Sprawdź kod" }),
+    )
+    await user.tab()
+    expect(document.activeElement).toBe(
+      screen.getByTestId("voucher-redeem-action"),
+    )
+  })
+
+  it("po realizacji focus trafia NA POTWIERDZENIE, nie zostaje na zniknięciu karty", async () => {
+    const user = userEvent.setup()
+    const done = await redeemThrough(user, ENVELOPE_FRESH, false)
+    expect(document.activeElement).toBe(done)
+  })
+})
+
+describe("5.6 / AC4 — potwierdzenie mówi CO i KIEDY, koperta schodzi pod „Szczegóły”", () => {
+  it("świeża realizacja: co i kiedy po polsku na pierwszym planie, bez surowego identyfikatora", async () => {
+    const user = userEvent.setup()
+    const done = await redeemThrough(user, ENVELOPE_FRESH, false)
+    const primary = within(done).getByTestId("voucher-confirmation-primary")
+
+    expect(
+      within(primary).getByTestId("voucher-confirmation-what").textContent,
+    ).toContain("Zrealizowano: Masaż relaksacyjny")
+    const when = within(primary).getByTestId(
+      "voucher-confirmation-when",
+    ).textContent
+    expect(when).toContain("Data realizacji:")
+    // Data po POLSKU, nie ISO-8601 i nie „Invalid Date”.
+    expect(when).toContain("sierpnia 2026")
+    expect(when).not.toContain("2026-08-06T12:32:00.000Z")
+    expect(when).not.toContain("Invalid")
+    // Żaden surowy identyfikator techniczny na pierwszym planie.
+    expect(primary.textContent).not.toContain("aud_360")
+    expect(primary.textContent).not.toContain("bonbeauty")
+  })
+
+  it("koperta audytowa JEST na ekranie, ale domyślnie zwinięta", async () => {
+    const user = userEvent.setup()
+    const done = await redeemThrough(user, ENVELOPE_FRESH, false)
+    const details = within(done).getByTestId(
+      "voucher-audit-details",
+    ) as HTMLDetailsElement
+
+    expect(details.open).toBe(false)
+    // Zasada ZEJŚCIA, nie wycięcia: pełna koperta jest w drzewie.
+    expect(details.textContent).toContain("aud_360")
+    expect(details.textContent).toContain("bonbeauty")
+    expect(details.textContent).toContain("idle → claimed")
+    expect(details.textContent).toContain("2026-08-06T12:32:00.000Z")
+    // `vendor_id` / `seller_id` zostają POZA widokiem — decyzja zapisana
+    // w Dev Agent Record, nie przypadek.
+    expect(done.textContent).not.toContain("ven_1")
+    expect(done.textContent).not.toContain("sel_1")
+  })
+
+  it("kontrola przeciwna do „zwinięte”: kliknięcie w „Szczegóły” otwiera kopertę", async () => {
+    const user = userEvent.setup()
+    const done = await redeemThrough(user, ENVELOPE_FRESH, false)
+    const details = within(done).getByTestId(
+      "voucher-audit-details",
+    ) as HTMLDetailsElement
+
+    // Bez tego testu asercja `open === false` przechodziłaby także wtedy, gdy
+    // rozwinięcia NIE DA SIĘ otworzyć — czyli mierzyłaby stałą, nie mechanizm.
+    await user.click(within(details).getByText("Szczegóły"))
+    expect(details.open).toBe(true)
+  })
+
+  it("ścieżka idempotentna mówi PRAWDĘ: kiedy zrealizowano WCZEŚNIEJ, bez zdania o przejściu", async () => {
+    const user = userEvent.setup()
+    const done = await redeemThrough(user, ENVELOPE_IDEMPOTENT, true)
+    const primary = within(done).getByTestId("voucher-confirmation-primary")
+
+    expect(primary.textContent).toContain("Ten voucher był już zrealizowany wcześniej.")
+    expect(
+      within(primary).getByTestId("voucher-confirmation-when").textContent,
+    ).toContain("Voucher został zrealizowany wcześniej:")
+    expect(primary.textContent).not.toContain("Stan vouchera zmienił się")
+    // „Kiedy” opisuje POPRZEDNIĄ realizację, nie tę próbę.
+    expect(
+      within(primary).getByTestId("voucher-confirmation-when").textContent,
+    ).toContain("sierpnia 2026")
+  })
+
+  it("potwierdzenie nie zostawia na ekranie surowych kluczy i18n", async () => {
+    const user = userEvent.setup()
+    const done = await redeemThrough(user, ENVELOPE_FRESH, false)
+    assertNoRawKeysNorMissingSentinel(done)
   })
 })
 
