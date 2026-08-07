@@ -109,6 +109,30 @@
             "audit_reference": {
               "type": "string"
             },
+            "confirmation_what": {
+              "type": "string"
+            },
+            "confirmation_when": {
+              "type": "string"
+            },
+            "confirmation_when_earlier": {
+              "type": "string"
+            },
+            "details_summary": {
+              "type": "string"
+            },
+            "details_market_id": {
+              "type": "string"
+            },
+            "details_market_none": {
+              "type": "string"
+            },
+            "details_status_transition": {
+              "type": "string"
+            },
+            "details_claimed_at": {
+              "type": "string"
+            },
             "reset": {
               "type": "string"
             },
@@ -159,6 +183,14 @@
             "redeemed_now",
             "idempotent_done",
             "transition",
+            "confirmation_what",
+            "confirmation_when",
+            "confirmation_when_earlier",
+            "details_summary",
+            "details_market_id",
+            "details_market_none",
+            "details_status_transition",
+            "details_claimed_at",
             "audit_reference",
             "reset",
             "error"
