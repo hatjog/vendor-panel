@@ -69,6 +69,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import { useMe } from "../../hooks/api/users"
 import { voucherStatusI18nKey } from "../../i18n/voucher-state-vocabulary"
 import {
   newIdempotencyKey,
@@ -103,7 +104,12 @@ type RedeemEnvelope = {
   seller_id: string
   market_id: string | null
   code: string
-  prior_status: string
+  /**
+   * Stan SPRZED przejścia albo `null`. `null` znaczy „serwer nie zna stanu
+   * sprzed" (voucher zrealizowany przed 5.8) — a nie „stan bieżący"
+   * (review-fix cyklu 1, LOW).
+   */
+  prior_status: string | null
   new_status: "claimed" | "already_claimed"
   claimed_at: string
 }
@@ -125,6 +131,31 @@ type RefusalReason =
   | "withdrawn"
   | "expired"
   | "not_redeemable"
+
+/**
+ * ALLOW-LISTA stanów, w których przycisk realizacji ma prawo się pokazać
+ * (AD-17, review-fix cyklu 1, finding MEDIUM).
+ *
+ * Lustro `VOUCHER_REDEMPTION_INPUT_STATES` z backendu. Wcześniej stała tu
+ * NEGACJA `status !== "claimed"` — czyli dokładnie ten kształt, który ta story
+ * usuwa z backendu, bo przepuszcza `withdrawn` i `expired`. Skutek dla
+ * kosmetolożki: aktywny przycisk „Oznacz jako zrealizowany" nad voucherem
+ * wycofanym, kliknięcie w ścianę i powód dopiero z `409`.
+ *
+ * AD-17 jest regułą architektoniczną, a nie regułą jednego pliku, więc panel
+ * bramkuje po PRZYNALEŻNOŚCI DO ZBIORU, nie po nieobecności jednej wartości.
+ */
+const REDEEMABLE_STATUSES: readonly string[] = ["idle", "consent_pending"]
+
+/**
+ * Powód, dla którego stan NIE pozwala na realizację — ten sam zbiór etykiet,
+ * co odmowa serwera (UX-DR9), pokazany ZANIM kosmetolożka kliknie.
+ * `claimed` ma własny, łagodniejszy komunikat (`already_claimed`).
+ */
+const NON_REDEEMABLE_REASON: Record<string, RefusalReason | undefined> = {
+  withdrawn: "withdrawn",
+  expired: "expired",
+}
 
 const REFUSAL_I18N_KEY = {
   already_redeemed: "voucher.redeem.refused.already_redeemed",
@@ -217,6 +248,13 @@ function formatWhen(iso: string, language: string): string {
 
 export const VoucherRedeem = () => {
   const { t, i18n } = useTranslation()
+  /**
+   * Salon, w którego zakresie działa ekran. Nośnik tożsamości dla
+   * `ensureSellerMiddleware` (`x-seller-id`) — bez niego trasa `/vendor/*`
+   * odrzuca żądanie ZANIM dotrze do handlera (review-fix cyklu 1, HIGH).
+   */
+  const { seller } = useMe()
+  const sellerId = seller?.id ?? ""
   const [code, setCode] = useState("")
   const [lookup, setLookup] = useState<LookupState>({ kind: "idle" })
   const [redeem, setRedeem] = useState<RedeemState>({ kind: "idle" })
@@ -266,7 +304,7 @@ export const VoucherRedeem = () => {
     try {
       const data = await voucherFetch(
         `/vendor/vouchers/${encodeURIComponent(trimmed)}/lookup`,
-        { method: "GET" },
+        { method: "GET", sellerId },
       )
       if (data?.voucher) {
         // Klucz powstaje TUTAJ — przed pierwszą próbą realizacji, raz na
@@ -315,6 +353,7 @@ export const VoucherRedeem = () => {
         )}/redeem`,
         {
           method: "POST",
+          sellerId,
           headers: { "Idempotency-Key": idempotencyKey },
         },
       )
@@ -489,6 +528,26 @@ export const VoucherRedeem = () => {
             </div>
           )}
 
+          {/*
+            Stan spoza allow-listy (`withdrawn`, `expired`) mówi POWÓD ZANIM
+            kosmetolożka kliknie — przycisk już się dla tych stanów nie pokazuje
+            (AD-17, UX-DR9, review-fix cyklu 1). Wcześniej powód przychodził
+            dopiero z `409`, po kliknięciu w ścianę.
+          */}
+          {NON_REDEEMABLE_REASON[lookup.voucher.status] && (
+            <p
+              role="status"
+              data-testid="voucher-not-redeemable"
+              className="text-sm text-red-700"
+            >
+              {t(
+                REFUSAL_I18N_KEY[
+                  NON_REDEEMABLE_REASON[lookup.voucher.status] as RefusalReason
+                ],
+              )}
+            </p>
+          )}
+
           {redeem.kind === "error" && (
             <p role="alert" className="text-sm text-red-700">
               {t(redeem.messageKey)}
@@ -527,7 +586,8 @@ export const VoucherRedeem = () => {
         // Po odmowie z powodem przycisk ZNIKA: ponowienie nie zmieni wyniku,
         // a zostawiony przycisk zaprasza do klikania w ścianę.
         redeem.kind !== "refused" &&
-        lookup.voucher.status !== "claimed" && (
+        // ALLOW-LISTA, nie negacja (AD-17) — patrz `REDEEMABLE_STATUSES`.
+        REDEEMABLE_STATUSES.includes(lookup.voucher.status) && (
           <div
             data-testid="voucher-redeem-actions"
             className="sticky bottom-0 -mx-4 mt-4 border-t border-gray-200 bg-white p-4 sm:static sm:mx-0 sm:border-0 sm:p-0"
@@ -605,7 +665,8 @@ export const VoucherRedeem = () => {
               Zdanie o PRZEJŚCIU pokazuje się wyłącznie wtedy, gdy przejście
               faktycznie zaszło (review-fix cyklu 1 do 5.5, LOW-2).
             */}
-            {redeem.envelope.prior_status !== "claimed" &&
+            {redeem.envelope.prior_status !== null &&
+              redeem.envelope.prior_status !== "claimed" &&
               redeem.outcome === "redeemed_now" && (
                 <p>
                   {t("voucher.redeem.transition", {
@@ -642,7 +703,7 @@ export const VoucherRedeem = () => {
                   {t("voucher.redeem.details_status_transition")}
                 </dt>
                 <dd className="break-all font-mono">
-                  {`${redeem.envelope.prior_status} → ${redeem.envelope.new_status}`}
+                  {`${redeem.envelope.prior_status ?? "—"} → ${redeem.envelope.new_status}`}
                 </dd>
               </div>
               <div>

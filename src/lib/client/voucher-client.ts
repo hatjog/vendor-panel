@@ -6,11 +6,12 @@
  * Trasy `/vendor/vouchers/:code/{lookup,redeem}` są ZWOLNIONE z bramki HMAC
  * i uwierzytelnia je łańcuch Mercura (`authenticate("member", …)` +
  * `ensureSellerMiddleware`). `ensureSellerMiddleware` czyta `seller_id`
- * z nagłówka `x-seller-id` **albo z SESJI**, a `fetchQuery` nie wysyła ciasteczek
- * (`credentials` domyślnie `same-origin`, a backend bywa na innym originie).
- * Ten klient dokłada `credentials: "include"` — tak samo, jak robi to od dawna
- * widget `competitive-insights`, jedyna inna powierzchnia panelu stojąca na tym
- * samym transporcie.
+ * z nagłówka `x-seller-id` **albo z SESJI**, a `fetchQuery` nie wysyła ani
+ * jednego, ani drugiego (`credentials` domyślnie `same-origin`, a backend bywa
+ * na innym originie). Ten klient wysyła `x-seller-id` JAWNIE (patrz
+ * {@link SELLER_ID_HEADER} — sesyjnego `seller_id` nie zapisuje w panelu nic,
+ * bo `POST /vendor/sellers/select` nie jest nigdzie wołane) i dokłada
+ * `credentials: "include"` jako nośnik zapasowy.
  *
  * Poza tym `fetchQuery` gubi z odpowiedzi błędu pola `code` i `reason`, a od
  * 5.8 to WŁAŚNIE ONE niosą rozróżnialny powód odmowy (UX-DR9). Zamiana samego
@@ -66,19 +67,46 @@ function readAuthToken(): string {
   }
 }
 
+/**
+ * Nagłówek tożsamości salonu wymagany przez `ensureSellerMiddleware`
+ * (`@mercurjs/core`, `api/utils/ensure-seller-middleware.ts`).
+ *
+ * == Dlaczego JEST WYSYŁANY JAWNIE (review-fix cyklu 1, finding HIGH) ==
+ * Middleware bierze `seller_id` z `x-seller-id` **albo** z `req.session.seller_id`,
+ * a sesyjny nośnik zapisuje WYŁĄCZNIE trasa `POST /vendor/sellers/select`,
+ * której panel nigdy nie woła (zmierzone `grep`-em po ZAINICJALIZOWANYM
+ * submodule, nie po pustym katalogu). Poleganie na samym `credentials: "include"`
+ * oznaczało więc, że każde żądanie tego ekranu odbija się o `NOT_ALLOWED`
+ * („x-seller-id header is required for vendor routes”) — czyli `401` sprzed 5.8
+ * zamieniało się na odmowę z innego miejsca, a kontrola dodatnia AC3 przechodziła
+ * tylko dlatego, że skrypt `curl` podstawiał ten nagłówek ręcznie.
+ *
+ * To NIE JEST zaufanie nagłówkowi: `ensureSellerMiddleware` weryfikuje po
+ * stronie serwera członkostwo `(seller_id, member_id)` w `seller_member`
+ * i odrzuca nie-członka. Nagłówek WSKAZUJE salon, nie nadaje uprawnienia.
+ */
+export const SELLER_ID_HEADER = "x-seller-id"
+
 export async function voucherFetch(
   path: string,
-  init: { method: "GET" | "POST"; headers?: Record<string, string> }
+  init: {
+    method: "GET" | "POST"
+    /** Salon, w którego zakresie działa ekran — z `useMe()`. */
+    sellerId: string
+    headers?: Record<string, string>
+  }
 ): Promise<Record<string, unknown>> {
   const response = await fetch(`${resolveBackendUrl()}${path}`, {
     method: init.method,
-    // Sesja sprzedawcy Mercura — bez niej `ensureSellerMiddleware` nie ma
-    // z czego wziąć `seller_id` i żądanie nie dochodzi do handlera.
+    // Sesja sprzedawcy Mercura zostaje jako DRUGI, zapasowy nośnik (gdyby
+    // panel kiedyś zaczął wołać `/vendor/sellers/select`), ale nie jest już
+    // jedynym — patrz komentarz przy `SELLER_ID_HEADER`.
     credentials: "include",
     headers: {
       authorization: `Bearer ${readAuthToken()}`,
       "Content-Type": "application/json",
       "x-publishable-api-key": resolvePublishableApiKey(),
+      [SELLER_ID_HEADER]: init.sellerId,
       ...(init.headers ?? {}),
     },
   })

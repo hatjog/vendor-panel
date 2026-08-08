@@ -53,6 +53,16 @@ vi.mock("../../../lib/client/voucher-client", async () => {
   return { ...actual, voucherFetch: fetchQuery }
 })
 
+/**
+ * `useMe` podmieniony CELOWO (review-fix cyklu 1, HIGH): ekran bierze stąd
+ * `seller.id`, żeby wysłać `x-seller-id`. Prawdziwy hook uderzałby w sieć
+ * przez `fetchQuery`, czego jsdom nie obsłuży, a suita mierzyłaby wtedy
+ * zachowanie react-query, nie ekranu.
+ */
+vi.mock("../../../hooks/api/users", () => ({
+  useMe: () => ({ seller: { id: "sel_1" } }),
+}))
+
 import { VoucherApiError } from "../../../lib/client/voucher-client"
 import { VoucherRedeem } from "../voucher-redeem"
 
@@ -753,6 +763,106 @@ describe("5.8 / AC6+AC7 — klucz idempotencji klienta i powód odmowy", () => {
       expect(screen.queryByTestId("voucher-redeem-action")).toBeNull()
     },
   )
+})
+
+/**
+ * review-fix cyklu 1 — findings HIGH (nośnik tożsamości) i MEDIUM (AD-17
+ * w panelu). Obie asercje PĘKAJĄ po cofnięciu poprawki, a nie tylko po
+ * usunięciu pliku.
+ */
+describe("review-fix cyklu 1 — tożsamość salonu i allow-lista stanów", () => {
+  it("każde żądanie ekranu niesie `sellerId` z zalogowanego salonu (AC2)", async () => {
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockResolvedValueOnce({
+        idempotent: false,
+        envelope: {
+          audit_log_id: "aud_11",
+          vendor_id: "ven_1",
+          seller_id: "sel_1",
+          market_id: null,
+          code: CODE,
+          prior_status: "idle",
+          new_status: "claimed",
+          claimed_at: "2026-08-05T10:00:00.000Z",
+        },
+      })
+    renderScreen()
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+
+    // Bez tego pola `voucherFetch` nie ma z czego złożyć `x-seller-id`,
+    // a `ensureSellerMiddleware` odrzuca żądanie przed handlerem.
+    expect(fetchQuery.mock.calls[0][1].sellerId).toBe("sel_1")
+    expect(fetchQuery.mock.calls[1][1].sellerId).toBe("sel_1")
+  })
+
+  it.each([
+    ["withdrawn", "Ten voucher został wycofany i nie można go zrealizować."],
+    ["expired", "Ten voucher wygasł i nie można go zrealizować."],
+  ])(
+    "stan `%s` NIE pokazuje przycisku realizacji i mówi powód od razu (AD-17)",
+    async (status, sentence) => {
+      const user = userEvent.setup()
+      fetchQuery.mockResolvedValueOnce({ voucher: voucherView(status) })
+      renderScreen()
+      await lookUp(user)
+
+      // Negacja `status !== "claimed"` przepuszczała OBA te stany: przycisk był
+      // aktywny, klik kończył się `409`, a powód przychodził dopiero wtedy.
+      expect(await screen.findByTestId("voucher-not-redeemable")).toBeTruthy()
+      expect(screen.getByTestId("voucher-not-redeemable").textContent).toBe(
+        sentence,
+      )
+      expect(screen.queryByTestId("voucher-redeem-action")).toBeNull()
+    },
+  )
+
+  it.each(["idle", "consent_pending"])(
+    "stan `%s` (allow-lista) nadal pokazuje przycisk — kontrola dodatnia",
+    async (status) => {
+      const user = userEvent.setup()
+      fetchQuery.mockResolvedValueOnce({ voucher: voucherView(status) })
+      renderScreen()
+      await lookUp(user)
+
+      expect(await screen.findByTestId("voucher-redeem-action")).toBeTruthy()
+      expect(screen.queryByTestId("voucher-not-redeemable")).toBeNull()
+    },
+  )
+
+  it("koperta replayu bez `prior_status` (dane sprzed 5.8) nie zmyśla przejścia", async () => {
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockResolvedValueOnce({
+        idempotent: true,
+        outcome: "replayed_same_request",
+        envelope: {
+          audit_log_id: "aud_12",
+          vendor_id: "ven_1",
+          seller_id: "sel_1",
+          market_id: null,
+          code: CODE,
+          // Serwer po review-fixie zwraca `null`, a nie stan BIEŻĄCY.
+          prior_status: null,
+          new_status: "claimed",
+          claimed_at: "2026-08-05T10:00:00.000Z",
+        },
+      })
+    renderScreen()
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+
+    const done = await screen.findByRole("status")
+    expect(done.textContent).not.toContain("Stan vouchera zmienił się")
+    expect(done.textContent).toContain("Voucher został zrealizowany wcześniej")
+  })
 })
 
 /**
