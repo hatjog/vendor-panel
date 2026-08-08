@@ -7,6 +7,7 @@
       "claimed": "Redeemed",
       "withdrawn": "Withdrawn",
       "expired": "Expired",
+      "refunded": "Refunded — the money went back to the customer",
       "unknown": "Unrecognised state — please contact support"
     },
     "redeem": {
@@ -46,7 +47,8 @@
         "already_redeemed": "This voucher was already redeemed earlier, by a different request. We will not redeem it twice.",
         "withdrawn": "This voucher has been withdrawn and cannot be redeemed.",
         "expired": "This voucher has expired and cannot be redeemed.",
-        "not_redeemable": "This voucher's state does not allow redemption. Please contact support with the voucher code."
+        "not_redeemable": "This voucher's state does not allow redemption. Please contact support with the voucher code.",
+        "refunded": "This voucher was refunded — the money went back to the customer, so it cannot be redeemed."
       },
       "error": {
         "code_too_short": "Enter a voucher code — at least 3 characters are required.",

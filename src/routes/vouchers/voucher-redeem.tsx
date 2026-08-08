@@ -131,6 +131,9 @@ type RefusalReason =
   | "withdrawn"
   | "expired"
   | "not_redeemable"
+  // v1.15.0 Story 5.9 (FR-12): voucher zwrócony — rozłączny z „zrealizowany"
+  // i „wygasły", bo przyczyna jest inna: pieniądze wróciły do klientki.
+  | "refunded"
 
 /**
  * ALLOW-LISTA stanów, w których przycisk realizacji ma prawo się pokazać
@@ -155,6 +158,7 @@ const REDEEMABLE_STATUSES: readonly string[] = ["idle", "consent_pending"]
 const NON_REDEEMABLE_REASON: Record<string, RefusalReason | undefined> = {
   withdrawn: "withdrawn",
   expired: "expired",
+  refunded: "refunded",
 }
 
 const REFUSAL_I18N_KEY = {
@@ -162,6 +166,7 @@ const REFUSAL_I18N_KEY = {
   withdrawn: "voucher.redeem.refused.withdrawn",
   expired: "voucher.redeem.refused.expired",
   not_redeemable: "voucher.redeem.refused.not_redeemable",
+  refunded: "voucher.redeem.refused.refunded",
 } as const
 
 function refusalFromError(error: unknown): RefusalReason | null {
