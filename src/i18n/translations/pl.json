@@ -30,6 +30,7 @@
       "redeeming": "Oznaczam…",
       "redeemed_now": "Voucher oznaczony jako zrealizowany.",
       "idempotent_done": "Ten voucher był już zrealizowany wcześniej.",
+      "outcome_replayed": "To była Twoja powtórka — voucher jest zrealizowany raz, nie dwa.",
       "transition": "Stan vouchera zmienił się z „{{prior}}” na „{{next}}”.",
       "audit_reference": "Numer zgłoszenia do wsparcia: {{id}}",
       "confirmation_what": "Zrealizowano: {{product}} — {{value}}.",
@@ -41,6 +42,12 @@
       "details_status_transition": "Przejście stanu (technicznie)",
       "details_claimed_at": "Czas realizacji (technicznie)",
       "reset": "Sprawdź inny kod",
+      "refused": {
+        "already_redeemed": "Ten voucher został już zrealizowany wcześniej — innym żądaniem. Nie realizujemy go drugi raz.",
+        "withdrawn": "Ten voucher został wycofany i nie można go zrealizować.",
+        "expired": "Ten voucher wygasł i nie można go zrealizować.",
+        "not_redeemable": "Stan tego vouchera nie pozwala na realizację. Zgłoś to wsparciu, podając kod vouchera."
+      },
       "error": {
         "code_too_short": "Wpisz kod vouchera — potrzebne są co najmniej 3 znaki.",
         "lookup_failed": "Nie udało się sprawdzić vouchera. Spróbuj ponownie za chwilę.",
