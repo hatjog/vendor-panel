@@ -34,9 +34,36 @@ import {
   VOUCHER_STATUS_I18N_KEYS,
 } from "../../../i18n/voucher-state-vocabulary"
 
+/**
+ * v1.15.0 Story 5.8 (AC2/AC6): ekran woła `voucherFetch` z dedykowanego klienta
+ * (`lib/client/voucher-client`), a nie `fetchQuery`. Zmiana nośnika jest
+ * WYMUSZONA: `fetchQuery` nie wysyła ciasteczka sesji (a `ensureSellerMiddleware`
+ * Mercura bierze `seller_id` z sesji) i gubi z odpowiedzi błędu pola `code`
+ * i `reason`, czyli rozróżnialny powód odmowy (UX-DR9).
+ *
+ * Podmieniamy WYŁĄCZNIE `voucherFetch`; `newIdempotencyKey` i `VoucherApiError`
+ * zostają PRAWDZIWE — inaczej suita mierzyłaby własne atrapy zamiast
+ * mechanizmu klucza idempotencji.
+ */
 const fetchQuery = vi.hoisted(() => vi.fn())
-vi.mock("../../../lib/client/client", () => ({ fetchQuery }))
+vi.mock("../../../lib/client/voucher-client", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../../lib/client/voucher-client")
+  >("../../../lib/client/voucher-client")
+  return { ...actual, voucherFetch: fetchQuery }
+})
 
+/**
+ * `useMe` podmieniony CELOWO (review-fix cyklu 1, HIGH): ekran bierze stąd
+ * `seller.id`, żeby wysłać `x-seller-id`. Prawdziwy hook uderzałby w sieć
+ * przez `fetchQuery`, czego jsdom nie obsłuży, a suita mierzyłaby wtedy
+ * zachowanie react-query, nie ekranu.
+ */
+vi.mock("../../../hooks/api/users", () => ({
+  useMe: () => ({ seller: { id: "sel_1" } }),
+}))
+
+import { VoucherApiError } from "../../../lib/client/voucher-client"
 import { VoucherRedeem } from "../voucher-redeem"
 
 const CODE = "GP-TEST-0001"
@@ -314,8 +341,16 @@ describe("AC4 — stan komunikowany kolorem I słowem, nigdy samym kolorem (WCAG
     )
 
     const done = await screen.findByRole("status")
-    expect(within(done).getByText("Ten voucher był już zrealizowany wcześniej."))
-      .toBeTruthy()
+    // v1.15.0 Story 5.8 (AC6, UX-DR8): zdanie ZMIENIŁO SIĘ i to jest sedno
+    // zmiany. „Ten voucher był już zrealizowany wcześniej" opisywało DWIE różne
+    // sytuacje naraz — Twoją powtórkę po utracie sieci i realizację przez kogoś
+    // INNEGO na tym samym koncie salonu. Teraz `replayed_same_request` znaczy
+    // dokładnie jedno; drugi przypadek jest ODMOWĄ z własnym komunikatem.
+    expect(
+      within(done).getByText(
+        "To była Twoja powtórka — voucher jest zrealizowany raz, nie dwa.",
+      ),
+    ).toBeTruthy()
     // `already_claimed` NIE jest stanem vouchera i nie może wyciec na PIERWSZY
     // PLAN (zawężenie ze Story 5.6 — w kopercie technicznej pod „Szczegóły”
     // jest wartością koperty, nie etykietą stanu pokazywaną kosmetolożce).
@@ -583,7 +618,9 @@ describe("5.6 / AC4 — potwierdzenie mówi CO i KIEDY, koperta schodzi pod „S
     const done = await redeemThrough(user, ENVELOPE_IDEMPOTENT, true)
     const primary = within(done).getByTestId("voucher-confirmation-primary")
 
-    expect(primary.textContent).toContain("Ten voucher był już zrealizowany wcześniej.")
+    expect(primary.textContent).toContain(
+      "To była Twoja powtórka — voucher jest zrealizowany raz, nie dwa.",
+    )
     expect(
       within(primary).getByTestId("voucher-confirmation-when").textContent,
     ).toContain("Voucher został zrealizowany wcześniej:")
@@ -598,6 +635,233 @@ describe("5.6 / AC4 — potwierdzenie mówi CO i KIEDY, koperta schodzi pod „S
     const user = userEvent.setup()
     const done = await redeemThrough(user, ENVELOPE_FRESH, false)
     assertNoRawKeysNorMissingSentinel(done)
+  })
+})
+
+/**
+ * v1.15.0 Story 5.8 (AC6, AC7) — klucz idempotencji i rozróżnialny powód odmowy
+ * mierzone WYKONANIEM, nie obecnością pól w kodzie.
+ */
+describe("5.8 / AC6+AC7 — klucz idempotencji klienta i powód odmowy", () => {
+  const ENVELOPE_58 = {
+    audit_log_id: "aud_58",
+    vendor_id: "ven_1",
+    seller_id: "sel_1",
+    market_id: "bonbeauty",
+    code: CODE,
+    prior_status: "idle",
+    new_status: "claimed",
+    claimed_at: "2026-08-08T10:00:00.000Z",
+  }
+
+  function headerOf(call: unknown[]): string | undefined {
+    const init = call[1] as { headers?: Record<string, string> } | undefined
+    return init?.headers?.["Idempotency-Key"]
+  }
+
+  it("realizacja niesie nagłówek Idempotency-Key, a lookup NIE", async () => {
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockResolvedValueOnce({ idempotent: false, outcome: "redeemed_now", envelope: ENVELOPE_58 })
+    renderScreen()
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+    await screen.findByTestId("voucher-redeem-confirmation")
+
+    expect(headerOf(fetchQuery.mock.calls[0])).toBeUndefined()
+    const key = headerOf(fetchQuery.mock.calls[1])
+    expect(typeof key).toBe("string")
+    expect((key as string).length).toBeGreaterThanOrEqual(8)
+  })
+
+  it("PONOWIENIE po błędzie sieci wysyła TEN SAM klucz", async () => {
+    // To jest cała treść UX-DR8: utrata sieci po zatwierdzeniu. Gdyby klucz
+    // powstawał w obsłudze kliknięcia, drugie żądanie byłoby dla serwera NOWE
+    // i saldo zeszłoby drugi raz.
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({
+        idempotent: true,
+        outcome: "replayed_same_request",
+        envelope: ENVELOPE_58,
+      })
+    renderScreen()
+    await lookUp(user)
+
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+    await screen.findByRole("alert")
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+    await screen.findByTestId("voucher-redeem-confirmation")
+
+    const first = headerOf(fetchQuery.mock.calls[1])
+    const second = headerOf(fetchQuery.mock.calls[2])
+    expect(first).toBeTruthy()
+    expect(second).toBe(first)
+  })
+
+  it("NOWY kod dostaje NOWY klucz (reset akcji, nie „klucz na zawsze”)", async () => {
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockResolvedValueOnce({ idempotent: false, outcome: "redeemed_now", envelope: ENVELOPE_58 })
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockResolvedValueOnce({ idempotent: false, outcome: "redeemed_now", envelope: ENVELOPE_58 })
+    renderScreen()
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+    await screen.findByTestId("voucher-redeem-confirmation")
+    await user.click(screen.getByRole("button", { name: "Sprawdź inny kod" }))
+
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+    await screen.findByTestId("voucher-redeem-confirmation")
+
+    expect(headerOf(fetchQuery.mock.calls[3])).not.toBe(
+      headerOf(fetchQuery.mock.calls[1]),
+    )
+  })
+
+  it.each([
+    ["already_redeemed", "Ten voucher został już zrealizowany wcześniej — innym żądaniem. Nie realizujemy go drugi raz."],
+    ["withdrawn", "Ten voucher został wycofany i nie można go zrealizować."],
+    ["expired", "Ten voucher wygasł i nie można go zrealizować."],
+  ])(
+    "odmowa `%s` jest POLSKIM ZDANIEM, a nie „spróbuj ponownie za chwilę”",
+    async (reason, sentence) => {
+      const user = userEvent.setup()
+      fetchQuery
+        .mockResolvedValueOnce({ voucher: voucherView("idle") })
+        .mockRejectedValueOnce(
+          new VoucherApiError(409, "VOUCHER_X", reason as string, "server text"),
+        )
+      renderScreen()
+      await lookUp(user)
+      await user.click(
+        await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+      )
+
+      const refusal = await screen.findByTestId("voucher-redeem-refusal")
+      expect(refusal.textContent).toBe(sentence)
+      // Rada „spróbuj ponownie" przy voucherze wycofanym nigdy nie zadziała.
+      expect(document.body.textContent).not.toContain("Spróbuj ponownie za chwilę")
+      // Surowy tekst serwera nie trafia na ekran kosmetolożki.
+      expect(document.body.textContent).not.toContain("server text")
+      // Po odmowie przycisk realizacji ZNIKA — nie zaprasza do klikania w ścianę.
+      expect(screen.queryByTestId("voucher-redeem-action")).toBeNull()
+    },
+  )
+})
+
+/**
+ * review-fix cyklu 1 — findings HIGH (nośnik tożsamości) i MEDIUM (AD-17
+ * w panelu). Obie asercje PĘKAJĄ po cofnięciu poprawki, a nie tylko po
+ * usunięciu pliku.
+ */
+describe("review-fix cyklu 1 — tożsamość salonu i allow-lista stanów", () => {
+  it("każde żądanie ekranu niesie `sellerId` z zalogowanego salonu (AC2)", async () => {
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockResolvedValueOnce({
+        idempotent: false,
+        envelope: {
+          audit_log_id: "aud_11",
+          vendor_id: "ven_1",
+          seller_id: "sel_1",
+          market_id: null,
+          code: CODE,
+          prior_status: "idle",
+          new_status: "claimed",
+          claimed_at: "2026-08-05T10:00:00.000Z",
+        },
+      })
+    renderScreen()
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+
+    // Bez tego pola `voucherFetch` nie ma z czego złożyć `x-seller-id`,
+    // a `ensureSellerMiddleware` odrzuca żądanie przed handlerem.
+    expect(fetchQuery.mock.calls[0][1].sellerId).toBe("sel_1")
+    expect(fetchQuery.mock.calls[1][1].sellerId).toBe("sel_1")
+  })
+
+  it.each([
+    ["withdrawn", "Ten voucher został wycofany i nie można go zrealizować."],
+    ["expired", "Ten voucher wygasł i nie można go zrealizować."],
+  ])(
+    "stan `%s` NIE pokazuje przycisku realizacji i mówi powód od razu (AD-17)",
+    async (status, sentence) => {
+      const user = userEvent.setup()
+      fetchQuery.mockResolvedValueOnce({ voucher: voucherView(status) })
+      renderScreen()
+      await lookUp(user)
+
+      // Negacja `status !== "claimed"` przepuszczała OBA te stany: przycisk był
+      // aktywny, klik kończył się `409`, a powód przychodził dopiero wtedy.
+      expect(await screen.findByTestId("voucher-not-redeemable")).toBeTruthy()
+      expect(screen.getByTestId("voucher-not-redeemable").textContent).toBe(
+        sentence,
+      )
+      expect(screen.queryByTestId("voucher-redeem-action")).toBeNull()
+    },
+  )
+
+  it.each(["idle", "consent_pending"])(
+    "stan `%s` (allow-lista) nadal pokazuje przycisk — kontrola dodatnia",
+    async (status) => {
+      const user = userEvent.setup()
+      fetchQuery.mockResolvedValueOnce({ voucher: voucherView(status) })
+      renderScreen()
+      await lookUp(user)
+
+      expect(await screen.findByTestId("voucher-redeem-action")).toBeTruthy()
+      expect(screen.queryByTestId("voucher-not-redeemable")).toBeNull()
+    },
+  )
+
+  it("koperta replayu bez `prior_status` (dane sprzed 5.8) nie zmyśla przejścia", async () => {
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockResolvedValueOnce({
+        idempotent: true,
+        outcome: "replayed_same_request",
+        envelope: {
+          audit_log_id: "aud_12",
+          vendor_id: "ven_1",
+          seller_id: "sel_1",
+          market_id: null,
+          code: CODE,
+          // Serwer po review-fixie zwraca `null`, a nie stan BIEŻĄCY.
+          prior_status: null,
+          new_status: "claimed",
+          claimed_at: "2026-08-05T10:00:00.000Z",
+        },
+      })
+    renderScreen()
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+
+    const done = await screen.findByRole("status")
+    expect(done.textContent).not.toContain("Stan vouchera zmienił się")
+    expect(done.textContent).toContain("Voucher został zrealizowany wcześniej")
   })
 })
 

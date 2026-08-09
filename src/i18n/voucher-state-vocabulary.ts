@@ -24,6 +24,9 @@ export const VOUCHER_STATUSES = [
   "claimed",
   "withdrawn",
   "expired",
+  // v1.15.0 Story 5.9 (FR-12): voucher zwrócony — kod przestaje działać razem
+  // z uprawnieniem, a kosmetolożka ma prawo znać rozłączny powód odmowy.
+  "refunded",
 ] as const
 
 export type VoucherStatus = (typeof VOUCHER_STATUSES)[number]
@@ -38,6 +41,7 @@ export const VOUCHER_STATUS_I18N_KEYS = {
   claimed: "voucher.status.claimed",
   withdrawn: "voucher.status.withdrawn",
   expired: "voucher.status.expired",
+  refunded: "voucher.status.refunded",
 } as const satisfies Record<VoucherStatus, string>
 
 /**

@@ -103,6 +103,33 @@
             "idempotent_done": {
               "type": "string"
             },
+            "outcome_replayed": {
+              "type": "string"
+            },
+            "refused": {
+              "type": "object",
+              "properties": {
+                "already_redeemed": {
+                  "type": "string"
+                },
+                "withdrawn": {
+                  "type": "string"
+                },
+                "expired": {
+                  "type": "string"
+                },
+                "not_redeemable": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "already_redeemed",
+                "withdrawn",
+                "expired",
+                "not_redeemable"
+              ],
+              "additionalProperties": false
+            },
             "transition": {
               "type": "string"
             },
@@ -182,6 +209,8 @@
             "redeeming",
             "redeemed_now",
             "idempotent_done",
+            "outcome_replayed",
+            "refused",
             "transition",
             "confirmation_what",
             "confirmation_when",

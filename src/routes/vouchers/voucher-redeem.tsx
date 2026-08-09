@@ -15,12 +15,13 @@
  *      8-key audit envelope. Already-claimed vouchers return 200 with
  *      idempotent=true and surface as "already redeemed".
  *
- * Auth: requests carry the existing vendor-panel session (Mercur cookie /
- * publishable key) via `fetchQuery`. The backend route is HMAC-gated
- * via `withVendorAuth`; a future iteration will inject the HMAC signer
- * inside `fetchQuery` so this UI works against the GP S2S surface (the
- * v1.9.0 baseline relies on the existing Mercur seller session for
- * local-dev parity — see CC-4 F-14 for the matching audit task).
+ * Auth (v1.15.0 Story 5.8, AC2 — zapowiedź z v1.9.0 ZASTĄPIONA, nie spełniona):
+ * trasy `/vendor/vouchers/:code/{lookup,redeem}` są ZWOLNIONE z bramki HMAC
+ * wpisami w `VENDOR_HMAC_EXEMPT_ROUTES` z transportem `mercur-seller-context`.
+ * Zapowiedź „a future iteration will inject the HMAC signer inside fetchQuery"
+ * NIE zostaje zrealizowana i nie zostanie: przeglądarka nie może trzymać
+ * materiału podpisującego S2S — sekret w kliencie jest sekretem opublikowanym.
+ * Do 5.8 panel wołał te trasy zwykłą sesją zza bramki HMAC i dostawał `401`.
  *
  * v1.15.0 Story 5.5 (FR-10b, FR-10c, UX-DR1..UX-DR4, NFR-7, AD-17):
  *   - Stan vouchera pochodzi ze SŁOWNIKA o jednym źródle
@@ -33,6 +34,20 @@
  *     nośnikiem znaczenia (WCAG 2.1 SC 1.4.1). Kontrast KAŻDEJ użytej pary
  *     kolor/tło jest zmierzony liczbowo w
  *     `_bmad-output/releases/v1.15.0/implementation-artifacts/evidence/5-5/contrast_check.py`.
+ *
+ * v1.15.0 Story 5.8 (FR-10d, FR-10e, FR-10f, UX-DR8, UX-DR9, AD-17, AD-20):
+ *   - Klucz idempotencji jest GENEROWANY W PANELU przed pierwszą próbą
+ *     i NIEZMIENIONY przy ponowieniu (`idempotencyKeyRef`). Bez niego
+ *     powtórka po utracie sieci jest dla serwera nowym żądaniem, a dla
+ *     kosmetolożki — nieodróżnialna od realizacji przez kogoś innego na tym
+ *     samym koncie salonu.
+ *   - Wynik ma TRZY rozróżnialne zdania po polsku: „zrealizowałaś teraz",
+ *     „to była Twoja powtórka" i „już zrealizowany innym żądaniem" (ten
+ *     ostatni jest ODMOWĄ `409`, bo `claimed` nie jest na allow-liście
+ *     stanów wejściowych).
+ *   - Odmowa niesie ROZRÓŻNIALNY powód (`zrealizowany` / `wycofany` /
+ *     `wygasły`) jako zdanie przez `t()`. „Nie twój" i „nieznany" pozostają
+ *     nieodróżnialne — obie ścieżki mają JEDEN komunikat `not_found`.
  *
  * v1.15.0 Story 5.6 (FR-10c, UX-DR5..UX-DR7, UX-DR11, NFR-7, AD-25):
  *   - Layout jest MOBILE-FIRST: wariant bezprefiksowy to wariant telefonu
@@ -54,8 +69,13 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import { useMe } from "../../hooks/api/users"
 import { voucherStatusI18nKey } from "../../i18n/voucher-state-vocabulary"
-import { fetchQuery } from "../../lib/client/client"
+import {
+  newIdempotencyKey,
+  VoucherApiError,
+  voucherFetch,
+} from "../../lib/client/voucher-client"
 
 type VendorVoucherView = {
   code: string
@@ -84,9 +104,77 @@ type RedeemEnvelope = {
   seller_id: string
   market_id: string | null
   code: string
-  prior_status: string
+  /**
+   * Stan SPRZED przejścia albo `null`. `null` znaczy „serwer nie zna stanu
+   * sprzed" (voucher zrealizowany przed 5.8) — a nie „stan bieżący"
+   * (review-fix cyklu 1, LOW).
+   */
+  prior_status: string | null
   new_status: "claimed" | "already_claimed"
   claimed_at: string
+}
+
+/**
+ * Dwa wyniki, które kończą się `200` (v1.15.0 Story 5.8, AC6). Trzeci przypadek
+ * — „już zrealizowany INNYM żądaniem" — jest odmową i żyje w `RedeemState`
+ * jako `refused` z powodem `already_redeemed`.
+ */
+type RedeemOutcome = "redeemed_now" | "replayed_same_request"
+
+/**
+ * Powody odmowy jako unia LITERAŁÓW, żeby mapa na klucze i18n była wyczerpana
+ * w chwili kompilacji. Serwer przysyła kod maszynowy; polskie zdanie składa
+ * panel — język interfejsu jest własnością panelu, a nie odpowiedzi HTTP.
+ */
+type RefusalReason =
+  | "already_redeemed"
+  | "withdrawn"
+  | "expired"
+  | "not_redeemable"
+  // v1.15.0 Story 5.9 (FR-12): voucher zwrócony — rozłączny z „zrealizowany"
+  // i „wygasły", bo przyczyna jest inna: pieniądze wróciły do klientki.
+  | "refunded"
+
+/**
+ * ALLOW-LISTA stanów, w których przycisk realizacji ma prawo się pokazać
+ * (AD-17, review-fix cyklu 1, finding MEDIUM).
+ *
+ * Lustro `VOUCHER_REDEMPTION_INPUT_STATES` z backendu. Wcześniej stała tu
+ * NEGACJA `status !== "claimed"` — czyli dokładnie ten kształt, który ta story
+ * usuwa z backendu, bo przepuszcza `withdrawn` i `expired`. Skutek dla
+ * kosmetolożki: aktywny przycisk „Oznacz jako zrealizowany" nad voucherem
+ * wycofanym, kliknięcie w ścianę i powód dopiero z `409`.
+ *
+ * AD-17 jest regułą architektoniczną, a nie regułą jednego pliku, więc panel
+ * bramkuje po PRZYNALEŻNOŚCI DO ZBIORU, nie po nieobecności jednej wartości.
+ */
+const REDEEMABLE_STATUSES: readonly string[] = ["idle", "consent_pending"]
+
+/**
+ * Powód, dla którego stan NIE pozwala na realizację — ten sam zbiór etykiet,
+ * co odmowa serwera (UX-DR9), pokazany ZANIM kosmetolożka kliknie.
+ * `claimed` ma własny, łagodniejszy komunikat (`already_claimed`).
+ */
+const NON_REDEEMABLE_REASON: Record<string, RefusalReason | undefined> = {
+  withdrawn: "withdrawn",
+  expired: "expired",
+  refunded: "refunded",
+}
+
+const REFUSAL_I18N_KEY = {
+  already_redeemed: "voucher.redeem.refused.already_redeemed",
+  withdrawn: "voucher.redeem.refused.withdrawn",
+  expired: "voucher.redeem.refused.expired",
+  not_redeemable: "voucher.redeem.refused.not_redeemable",
+  refunded: "voucher.redeem.refused.refunded",
+} as const
+
+function refusalFromError(error: unknown): RefusalReason | null {
+  if (!(error instanceof VoucherApiError)) return null
+  if (error.reason && error.reason in REFUSAL_I18N_KEY) {
+    return error.reason as RefusalReason
+  }
+  return null
 }
 
 /**
@@ -112,8 +200,11 @@ type LookupState =
 type RedeemState =
   | { kind: "idle" }
   | { kind: "loading" }
+  /** Odmowa z ROZRÓŻNIALNYM powodem (UX-DR9) — osobny stan, nie błąd sieci. */
+  | { kind: "refused"; reason: RefusalReason }
   | {
       kind: "done"
+      outcome: RedeemOutcome
       idempotent: boolean
       envelope: RedeemEnvelope
       /**
@@ -162,10 +253,26 @@ function formatWhen(iso: string, language: string): string {
 
 export const VoucherRedeem = () => {
   const { t, i18n } = useTranslation()
+  /**
+   * Salon, w którego zakresie działa ekran. Nośnik tożsamości dla
+   * `ensureSellerMiddleware` (`x-seller-id`) — bez niego trasa `/vendor/*`
+   * odrzuca żądanie ZANIM dotrze do handlera (review-fix cyklu 1, HIGH).
+   */
+  const { seller } = useMe()
+  const sellerId = seller?.id ?? ""
   const [code, setCode] = useState("")
   const [lookup, setLookup] = useState<LookupState>({ kind: "idle" })
   const [redeem, setRedeem] = useState<RedeemState>({ kind: "idle" })
   const confirmationRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * Klucz idempotencji TEJ akcji użytkownika (UX-DR8, AC6).
+   *
+   * Powstaje RAZ — przy udanym lookupie, czyli PRZED pierwszą próbą
+   * realizacji — i nie zmienia się przy ponowieniu. `useRef`, nie `useState`:
+   * klucz nie ma wpływać na render, a każdy re-render z nowym kluczem
+   * zamieniłby retry w drugą realizację. Nowy kod ⇒ nowa akcja ⇒ nowy klucz.
+   */
+  const idempotencyKeyRef = useRef<string | null>(null)
 
   /**
    * AC3: po realizacji focus przechodzi NA POTWIERDZENIE. Bez tego kciuk
@@ -181,6 +288,9 @@ export const VoucherRedeem = () => {
   const reset = () => {
     setLookup({ kind: "idle" })
     setRedeem({ kind: "idle" })
+    // Nowa akcja użytkownika = nowy klucz. Gdyby klucz przeżył reset, kolejna
+    // realizacja (innego kodu!) wyglądałaby dla serwera jak powtórka tej.
+    idempotencyKeyRef.current = null
   }
 
   const onLookup = async (e: React.FormEvent) => {
@@ -195,13 +305,18 @@ export const VoucherRedeem = () => {
     }
     setLookup({ kind: "loading" })
     setRedeem({ kind: "idle" })
+    idempotencyKeyRef.current = null
     try {
-      const data = await fetchQuery(
+      const data = await voucherFetch(
         `/vendor/vouchers/${encodeURIComponent(trimmed)}/lookup`,
-        { method: "GET" },
+        { method: "GET", sellerId },
       )
       if (data?.voucher) {
-        setLookup({ kind: "found", voucher: data.voucher })
+        // Klucz powstaje TUTAJ — przed pierwszą próbą realizacji, raz na
+        // znaleziony voucher. Generowanie go w `onRedeem` dawałoby nowy klucz
+        // na każde kliknięcie, czyli dokładnie zachowanie sprzed 5.8.
+        idempotencyKeyRef.current = newIdempotencyKey()
+        setLookup({ kind: "found", voucher: data.voucher as VendorVoucherView })
       } else {
         setLookup({ kind: "not_found" })
       }
@@ -224,17 +339,44 @@ export const VoucherRedeem = () => {
 
   const onRedeem = async () => {
     if (lookup.kind !== "found") return
+    // Klucz z REF-a, nie świeży: to jest cała treść AC6. Gdyby go tu nie było
+    // (np. stan po odświeżeniu komponentu), lepiej odmówić niż wysłać żądanie
+    // bez bariery idempotencji — serwer i tak odrzuci je `400`.
+    const idempotencyKey = idempotencyKeyRef.current
+    if (!idempotencyKey) {
+      setRedeem({
+        kind: "error",
+        messageKey: "voucher.redeem.error.redeem_failed",
+      })
+      return
+    }
     setRedeem({ kind: "loading" })
     try {
-      const data = await fetchQuery(
+      const data = await voucherFetch(
         `/vendor/vouchers/${encodeURIComponent(
           lookup.voucher.code,
         )}/redeem`,
-        { method: "POST" },
+        {
+          method: "POST",
+          sellerId,
+          headers: { "Idempotency-Key": idempotencyKey },
+        },
       )
       if (data?.envelope) {
+        const outcome: RedeemOutcome =
+          data.outcome === "replayed_same_request"
+            ? "replayed_same_request"
+            : data.outcome === "redeemed_now"
+              ? "redeemed_now"
+              : // Serwer sprzed 5.8 nie zna pola `outcome`; wtedy nośnikiem
+                // rozróżnienia zostaje `idempotent`. Odwrotna kolejność
+                // (najpierw `idempotent`) ignorowałaby nowe pole.
+                Boolean(data.idempotent)
+                ? "replayed_same_request"
+                : "redeemed_now"
         setRedeem({
           kind: "done",
+          outcome,
           idempotent: Boolean(data.idempotent),
           envelope: data.envelope as RedeemEnvelope,
           voucher: lookup.voucher,
@@ -245,7 +387,15 @@ export const VoucherRedeem = () => {
           messageKey: "voucher.redeem.error.empty_response",
         })
       }
-    } catch {
+    } catch (err) {
+      // Odmowa z rozróżnialnym powodem (UX-DR9) NIE jest błędem sieci
+      // i nie wolno jej zwinąć do „spróbuj ponownie za chwilę": ponowienie
+      // realizacji vouchera wycofanego nigdy się nie uda.
+      const reason = refusalFromError(err)
+      if (reason) {
+        setRedeem({ kind: "refused", reason })
+        return
+      }
       setRedeem({
         kind: "error",
         messageKey: "voucher.redeem.error.redeem_failed",
@@ -383,9 +533,45 @@ export const VoucherRedeem = () => {
             </div>
           )}
 
+          {/*
+            Stan spoza allow-listy (`withdrawn`, `expired`) mówi POWÓD ZANIM
+            kosmetolożka kliknie — przycisk już się dla tych stanów nie pokazuje
+            (AD-17, UX-DR9, review-fix cyklu 1). Wcześniej powód przychodził
+            dopiero z `409`, po kliknięciu w ścianę.
+          */}
+          {NON_REDEEMABLE_REASON[lookup.voucher.status] && (
+            <p
+              role="status"
+              data-testid="voucher-not-redeemable"
+              className="text-sm text-red-700"
+            >
+              {t(
+                REFUSAL_I18N_KEY[
+                  NON_REDEEMABLE_REASON[lookup.voucher.status] as RefusalReason
+                ],
+              )}
+            </p>
+          )}
+
           {redeem.kind === "error" && (
             <p role="alert" className="text-sm text-red-700">
               {t(redeem.messageKey)}
+            </p>
+          )}
+
+          {/*
+            ODMOWA Z POWODEM (AC7, UX-DR9). Osobny blok, nie ten sam co błąd
+            sieci: „spróbuj ponownie za chwilę" jest przy voucherze wycofanym
+            radą, która nigdy nie zadziała. Kolor NIE jest jedynym nośnikiem
+            znaczenia — zdanie mówi wprost, co się stało (WCAG 2.1 SC 1.4.1).
+          */}
+          {redeem.kind === "refused" && (
+            <p
+              role="alert"
+              data-testid="voucher-redeem-refusal"
+              className="text-sm text-red-700"
+            >
+              {t(REFUSAL_I18N_KEY[redeem.reason])}
             </p>
           )}
         </div>
@@ -402,7 +588,11 @@ export const VoucherRedeem = () => {
       */}
       {lookup.kind === "found" &&
         redeem.kind !== "done" &&
-        lookup.voucher.status !== "claimed" && (
+        // Po odmowie z powodem przycisk ZNIKA: ponowienie nie zmieni wyniku,
+        // a zostawiony przycisk zaprasza do klikania w ścianę.
+        redeem.kind !== "refused" &&
+        // ALLOW-LISTA, nie negacja (AD-17) — patrz `REDEEMABLE_STATUSES`.
+        REDEEMABLE_STATUSES.includes(lookup.voucher.status) && (
           <div
             data-testid="voucher-redeem-actions"
             className="sticky bottom-0 -mx-4 mt-4 border-t border-gray-200 bg-white p-4 sm:static sm:mx-0 sm:border-0 sm:p-0"
@@ -438,9 +628,19 @@ export const VoucherRedeem = () => {
             pod „Szczegóły”, a nie ich wycięcia.
           */}
           <div data-testid="voucher-confirmation-primary" className="space-y-2">
-            <div className="text-lg font-semibold">
-              {redeem.idempotent
-                ? t("voucher.redeem.idempotent_done")
+            {/*
+              TRZY przypadki, nie dwa (AC6, UX-DR8). Trzeci — „już zrealizowany
+              INNYM żądaniem" — nie dociera tutaj: jest odmową i renderuje się
+              w bloku `refused` powyżej. Dzięki temu „to była Twoja powtórka"
+              znaczy DOKŁADNIE to i nic więcej; przed 5.8 to samo zdanie
+              opisywało również realizację przez kogoś innego na tym koncie.
+            */}
+            <div
+              className="text-lg font-semibold"
+              data-testid="voucher-confirmation-outcome"
+            >
+              {redeem.outcome === "replayed_same_request"
+                ? t("voucher.redeem.outcome_replayed")
                 : t("voucher.redeem.redeemed_now")}
             </div>
             <p data-testid="voucher-confirmation-what">
@@ -459,7 +659,8 @@ export const VoucherRedeem = () => {
             */}
             <p data-testid="voucher-confirmation-when">
               {t(
-                redeem.idempotent || redeem.envelope.prior_status === "claimed"
+                redeem.outcome === "replayed_same_request" ||
+                  redeem.envelope.prior_status === "claimed"
                   ? "voucher.redeem.confirmation_when_earlier"
                   : "voucher.redeem.confirmation_when",
                 { when: formatWhen(redeem.envelope.claimed_at, i18n.language) },
@@ -469,8 +670,9 @@ export const VoucherRedeem = () => {
               Zdanie o PRZEJŚCIU pokazuje się wyłącznie wtedy, gdy przejście
               faktycznie zaszło (review-fix cyklu 1 do 5.5, LOW-2).
             */}
-            {redeem.envelope.prior_status !== "claimed" &&
-              !redeem.idempotent && (
+            {redeem.envelope.prior_status !== null &&
+              redeem.envelope.prior_status !== "claimed" &&
+              redeem.outcome === "redeemed_now" && (
                 <p>
                   {t("voucher.redeem.transition", {
                     prior: statusLabel(redeem.envelope.prior_status),
@@ -506,7 +708,7 @@ export const VoucherRedeem = () => {
                   {t("voucher.redeem.details_status_transition")}
                 </dt>
                 <dd className="break-all font-mono">
-                  {`${redeem.envelope.prior_status} → ${redeem.envelope.new_status}`}
+                  {`${redeem.envelope.prior_status ?? "—"} → ${redeem.envelope.new_status}`}
                 </dd>
               </div>
               <div>
