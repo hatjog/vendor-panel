@@ -70,7 +70,11 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { useMe } from "../../hooks/api/users"
-import { voucherStatusI18nKey } from "../../i18n/voucher-state-vocabulary"
+import {
+  REDEEM_REFUSAL_I18N_KEYS,
+  voucherStatusI18nKey,
+  type RedeemRefusalReason as RefusalReason,
+} from "../../i18n/voucher-state-vocabulary"
 import {
   newIdempotencyKey,
   VoucherApiError,
@@ -87,7 +91,7 @@ type VendorVoucherView = {
   currency_code: string
   /**
    * Świadomie `string`, nie unia literałów. Zbiór stanów jest własnością
-   * kontraktu (`voucher-state-vocabulary.v1.yaml`), a nie tego pliku —
+   * kontraktu (`voucher-state-vocabulary.v3.yaml`), a nie tego pliku —
    * lokalna unia była TRZECIM słownikiem w repo i rozjeżdżała się z domeną
    * (brakowało w niej `expired`, mimo że CHECK w bazie ten stan zna).
    * Wartość spoza słownika ma zdefiniowane zachowanie: `voucherStatusI18nKey`
@@ -122,20 +126,6 @@ type RedeemEnvelope = {
 type RedeemOutcome = "redeemed_now" | "replayed_same_request"
 
 /**
- * Powody odmowy jako unia LITERAŁÓW, żeby mapa na klucze i18n była wyczerpana
- * w chwili kompilacji. Serwer przysyła kod maszynowy; polskie zdanie składa
- * panel — język interfejsu jest własnością panelu, a nie odpowiedzi HTTP.
- */
-type RefusalReason =
-  | "already_redeemed"
-  | "withdrawn"
-  | "expired"
-  | "not_redeemable"
-  // v1.15.0 Story 5.9 (FR-12): voucher zwrócony — rozłączny z „zrealizowany"
-  // i „wygasły", bo przyczyna jest inna: pieniądze wróciły do klientki.
-  | "refunded"
-
-/**
  * ALLOW-LISTA stanów, w których przycisk realizacji ma prawo się pokazać
  * (AD-17, review-fix cyklu 1, finding MEDIUM).
  *
@@ -161,17 +151,9 @@ const NON_REDEEMABLE_REASON: Record<string, RefusalReason | undefined> = {
   refunded: "refunded",
 }
 
-const REFUSAL_I18N_KEY = {
-  already_redeemed: "voucher.redeem.refused.already_redeemed",
-  withdrawn: "voucher.redeem.refused.withdrawn",
-  expired: "voucher.redeem.refused.expired",
-  not_redeemable: "voucher.redeem.refused.not_redeemable",
-  refunded: "voucher.redeem.refused.refunded",
-} as const
-
 function refusalFromError(error: unknown): RefusalReason | null {
   if (!(error instanceof VoucherApiError)) return null
-  if (error.reason && error.reason in REFUSAL_I18N_KEY) {
+  if (error.reason && error.reason in REDEEM_REFUSAL_I18N_KEYS) {
     return error.reason as RefusalReason
   }
   return null
@@ -546,7 +528,7 @@ export const VoucherRedeem = () => {
               className="text-sm text-red-700"
             >
               {t(
-                REFUSAL_I18N_KEY[
+                REDEEM_REFUSAL_I18N_KEYS[
                   NON_REDEEMABLE_REASON[lookup.voucher.status] as RefusalReason
                 ],
               )}
@@ -571,7 +553,7 @@ export const VoucherRedeem = () => {
               data-testid="voucher-redeem-refusal"
               className="text-sm text-red-700"
             >
-              {t(REFUSAL_I18N_KEY[redeem.reason])}
+              {t(REDEEM_REFUSAL_I18N_KEYS[redeem.reason])}
             </p>
           )}
         </div>

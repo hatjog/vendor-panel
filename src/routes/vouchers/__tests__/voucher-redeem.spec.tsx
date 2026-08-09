@@ -30,6 +30,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 import { createTestI18n } from "../../../i18n/__tests__/test-i18n"
 import {
+  REDEEM_REFUSAL_I18N_KEYS,
   VOUCHER_STATUSES,
   VOUCHER_STATUS_I18N_KEYS,
 } from "../../../i18n/voucher-state-vocabulary"
@@ -735,9 +736,20 @@ describe("5.8 / AC6+AC7 — klucz idempotencji klienta i powód odmowy", () => {
   })
 
   it.each([
-    ["already_redeemed", "Ten voucher został już zrealizowany wcześniej — innym żądaniem. Nie realizujemy go drugi raz."],
+    [
+      "already_redeemed",
+      "Ten voucher został już zrealizowany wcześniej — innym żądaniem. Nie realizujemy go drugi raz.",
+    ],
     ["withdrawn", "Ten voucher został wycofany i nie można go zrealizować."],
     ["expired", "Ten voucher wygasł i nie można go zrealizować."],
+    [
+      "refunded",
+      "Ten voucher został zwrócony — pieniądze wróciły do klientki, więc nie realizujemy zabiegu.",
+    ],
+    [
+      "not_redeemable",
+      "Stan tego vouchera nie pozwala na realizację. Zgłoś to wsparciu, podając kod vouchera.",
+    ],
   ])(
     "odmowa `%s` jest POLSKIM ZDANIEM, a nie „spróbuj ponownie za chwilę”",
     async (reason, sentence) => {
@@ -763,6 +775,17 @@ describe("5.8 / AC6+AC7 — klucz idempotencji klienta i powód odmowy", () => {
       expect(screen.queryByTestId("voucher-redeem-action")).toBeNull()
     },
   )
+
+  it("lustro ADR-209 ma pięć rozłącznych, niepustych kluczy odmowy", () => {
+    expect(Object.keys(REDEEM_REFUSAL_I18N_KEYS).sort()).toEqual([
+      "already_redeemed",
+      "expired",
+      "not_redeemable",
+      "refunded",
+      "withdrawn",
+    ])
+    expect(new Set(Object.values(REDEEM_REFUSAL_I18N_KEYS)).size).toBe(5)
+  })
 })
 
 /**

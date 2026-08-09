@@ -1,8 +1,8 @@
 /**
  * Lustro słownika stanów vouchera — JEDNO ŹRÓDŁO leży POZA tym submodułem.
  *
- * Źródłem prawdy jest `specs/contracts/redemption/voucher-state-vocabulary.v1.yaml`
- * w superprojekcie (AD-17, ADR-178, Story 5.1). Panel jest jego KONSUMENTEM:
+ * Źródłem prawdy jest `specs/contracts/redemption/voucher-state-vocabulary.v3.yaml`
+ * w superprojekcie (AD-17, ADR-209). Panel jest jego KONSUMENTEM:
  * bierze stąd zbiór stanów i **kanoniczne klucze i18n**, a NIE wymyśla własnego
  * mapowania `status → napis`.
  *
@@ -51,6 +51,17 @@ export const VOUCHER_STATUS_I18N_KEYS = {
  * surowy identyfikator techniczny (AC3).
  */
 export const UNKNOWN_VOUCHER_STATUS_I18N_KEY = "voucher.status.unknown" as const
+
+/** Lustro wymaganej sekcji `refusal_reasons` z vocabulary v3 (ADR-209). */
+export const REDEEM_REFUSAL_I18N_KEYS = {
+  already_redeemed: "voucher.redeem.refused.already_redeemed",
+  withdrawn: "voucher.redeem.refused.withdrawn",
+  expired: "voucher.redeem.refused.expired",
+  refunded: "voucher.redeem.refused.refunded",
+  not_redeemable: "voucher.redeem.refused.not_redeemable",
+} as const
+
+export type RedeemRefusalReason = keyof typeof REDEEM_REFUSAL_I18N_KEYS
 
 /**
  * Unia LITERAŁÓW, nie `string`. `i18next.d.ts` panelu typuje `t()` po zbiorze
