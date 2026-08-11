@@ -127,7 +127,12 @@ export const useUserMe = (
 ) => {
   const { data, ...rest } = useQuery({
     queryFn: () =>
-      fetchQuery(`/vendor/me`, {
+      // DW-15-172: `/vendor/me` NIE ISTNIEJE w `@mercurjs/core@2.1.1` — router
+      // odpowiadal `404` ze strona HTML, a poniewaz `useMe()` karmi m.in.
+      // `protected-route`, cala aplikacja konczyla na ekranie bledu renderu.
+      // Wszyscy konsumenci tego hooka biorą z niego WYLACZNIE `seller` (zmierzone
+      // grepem po `useMe()`), a `seller` zwraca `/vendor/sellers/me`.
+      fetchQuery(`/vendor/sellers/me`, {
         method: "GET",
         query: query as { [key: string]: string | number },
       }),
