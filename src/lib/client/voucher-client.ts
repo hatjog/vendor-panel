@@ -88,7 +88,14 @@ function readAuthToken(): string {
 // Stala mieszka w `seller-context.ts` — jest wspolna dla CALEGO panelu, a nie
 // tylko dla ekranu vouchera (DW-15-170). Re-eksport zachowuje istniejacych
 // importerow (m.in. testy) bez tworzenia drugiej definicji.
-export { SELLER_ID_HEADER } from "./seller-context"
+// Import DAJE LOKALNE WIAZANIE (uzywane nizej w `voucherFetch`), re-eksport
+// zachowuje publiczna nazwe dla istniejacych importerow. Samo `export ... from`
+// NIE wprowadza identyfikatora do zasiegu modulu — a `voucherFetch` go uzywa,
+// wiec konczylo sie to `ReferenceError` PRZED wyjsciem w siec: zadanie nie
+// wychodzilo wcale, a ekran pokazywal generyczne "Could not look up the voucher".
+import { SELLER_ID_HEADER } from "./seller-context"
+
+export { SELLER_ID_HEADER }
 
 export async function voucherFetch(
   path: string,
