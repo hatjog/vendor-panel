@@ -85,7 +85,10 @@ function readAuthToken(): string {
  * stronie serwera członkostwo `(seller_id, member_id)` w `seller_member`
  * i odrzuca nie-członka. Nagłówek WSKAZUJE salon, nie nadaje uprawnienia.
  */
-export const SELLER_ID_HEADER = "x-seller-id"
+// Stala mieszka w `seller-context.ts` — jest wspolna dla CALEGO panelu, a nie
+// tylko dla ekranu vouchera (DW-15-170). Re-eksport zachowuje istniejacych
+// importerow (m.in. testy) bez tworzenia drugiej definicji.
+export { SELLER_ID_HEADER } from "./seller-context"
 
 export async function voucherFetch(
   path: string,

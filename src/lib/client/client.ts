@@ -1,5 +1,7 @@
 import Medusa from '@medusajs/js-sdk';
 
+import { SELLER_ID_HEADER, getStoredSellerId } from './seller-context';
+
 export const backendUrl = __BACKEND_URL__ ?? '/';
 export const publishableApiKey = __PUBLISHABLE_API_KEY__ ?? '';
 
@@ -99,6 +101,10 @@ export const fetchQuery = async (
   }
 ) => {
   const bearer = (await window.localStorage.getItem('medusa_auth_token')) || '';
+  // DW-15-170: kontekst salonu dla `ensureSellerMiddleware`. Pusty przed
+  // zalogowaniem i na trasach, ktore go nie wymagaja (`GET /vendor/sellers`) —
+  // wtedy naglowka nie ma w ogole, zamiast wysylac pusta wartosc.
+  const sellerId = getStoredSellerId();
   const params = Object.entries(query || {}).reduce((acc, [key, value]) => {
     if (value !== null && value !== undefined && value !== '') {
       if (Array.isArray(value)) {
@@ -127,13 +133,27 @@ export const fetchQuery = async (
       authorization: `Bearer ${bearer}`,
       'Content-Type': 'application/json',
       'x-publishable-api-key': publishableApiKey,
+      ...(sellerId ? { [SELLER_ID_HEADER]: sellerId } : {}),
       ...headers
     },
     body: body ? JSON.stringify(body) : null
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
+    // DW-15-172: cialo odmowy NIE ZAWSZE jest JSON-em. `404` z routera Medusy
+    // przychodzi jako strona HTML, a bezwarunkowe `.json()` rzucalo wtedy
+    // `SyntaxError: Unexpected token '<'` — blad PARSERA, ktory omija cala
+    // obsluge statusow nizej i lecial do React Error Boundary. Skutek zmierzony:
+    // jedna nieistniejaca trasa (`/vendor/me`) wywracala KAZDY ekran panelu
+    // komunikatem "An unexpected error occurred while rendering this page".
+    let errorData: { message?: string } = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = {
+        message: `${response.status} ${response.statusText} (odpowiedz nie jest JSON-em)`
+      };
+    }
 
     if (response.status === 401) {
       if (isTokenExpired(bearer)) {
