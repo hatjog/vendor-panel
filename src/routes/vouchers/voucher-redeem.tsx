@@ -66,7 +66,7 @@
  *     (UX-DR11). Surowe identyfikatory żyją wyłącznie w tej kopercie.
  */
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { useMe } from "../../hooks/api/users"
@@ -233,6 +233,96 @@ function formatWhen(iso: string, language: string): string {
   }
 }
 
+/**
+ * Długości grup kodu vouchera: `XX-XXXX-XXXX`.
+ *
+ * Lustro `buildVoucherCode` z backendu
+ * (`packages/api/src/workflows/entitlements/live-issue-from-payment-intent.ts`):
+ * dwuznakowy prefiks rynku + dwie czwórki z alfabetu bez `0/O/1/I/L`.
+ * Trzymamy TU wyłącznie kształt (grupy), nie alfabet — pole nie może odrzucać
+ * znaków, których zbiór jest własnością backendu; kosmetolożka przepisuje kod
+ * z wydruku i musi zobaczyć to, co wpisała, a odmowa należy do lookupu.
+ */
+const VOUCHER_CODE_GROUPS = [2, 4, 4] as const
+
+const VOUCHER_CODE_BODY_LENGTH = VOUCHER_CODE_GROUPS.reduce((a, b) => a + b, 0)
+
+/**
+ * Kanoniczna postać tego, co użytkownik wpisał: WIELKIE litery, bez znaków
+ * spoza `[A-Z0-9]`, myślniki dostawione automatycznie.
+ *
+ * Myślnik NIE jest znakiem do wpisania — jest dekoracją grup. Wpisanie
+ * `bok5t7ma6v`, wklejenie `bo k5t7 ma6v` i wklejenie `BO-K5T7-MA6V` dają ten
+ * sam wynik. Nadmiar ponad {@link VOUCHER_CODE_BODY_LENGTH} znaków jest
+ * ucinany, bo dłuższy ciąg nie jest kodem vouchera w żadnym rynku.
+ */
+export function formatVoucherCodeInput(raw: string): string {
+  const body = raw
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, VOUCHER_CODE_BODY_LENGTH)
+  const groups: string[] = []
+  let at = 0
+  for (const size of VOUCHER_CODE_GROUPS) {
+    if (at >= body.length) {
+      break
+    }
+    groups.push(body.slice(at, at + size))
+    at += size
+  }
+  return groups.join("-")
+}
+
+const countCodeChars = (value: string) => value.replace(/[^A-Z0-9]/gi, "").length
+
+/**
+ * Pozycja kursora w SFORMATOWANEJ wartości, wyrażona liczbą znaków kodu na
+ * lewo od niego. Liczymy po znakach kodu, bo maskowanie wstawia i usuwa
+ * myślniki — indeks liczony w surowym ciągu przesuwałby kursor przy każdym
+ * przekroczeniu granicy grupy.
+ */
+function caretAfterCodeChars(formatted: string, codeCharsBefore: number): number {
+  if (codeCharsBefore <= 0) {
+    return 0
+  }
+  let seen = 0
+  for (let i = 0; i < formatted.length; i++) {
+    if (formatted[i] !== "-") {
+      seen += 1
+      if (seen === codeCharsBefore) {
+        return i + 1
+      }
+    }
+  }
+  return formatted.length
+}
+
+/**
+ * Jedna edycja pola kodu: z poprzedniej wartości, nowej surowej wartości
+ * i pozycji kursora robi wartość kanoniczną i pozycję kursora po maskowaniu.
+ *
+ * Osobna funkcja czysta, bo cała nieoczywistość edycji maski jest tutaj —
+ * w komponencie zostaje przypisanie stanu. Przypadek graniczny, który bez tego
+ * wygląda jak zawieszony klawisz: Backspace na MYŚLNIKU. Maska odtworzyłaby go
+ * natychmiast, więc kasujemy wtedy znak PRZED nim — użytkownik celował w niego,
+ * bo myślnika nigdy nie wpisywał.
+ */
+export function applyVoucherCodeEdit(input: {
+  previous: string
+  next: string
+  caret: number
+}): { value: string; caret: number } {
+  let next = input.next
+  let caret = Math.max(0, Math.min(input.caret, next.length))
+  const removedOneChar = input.previous.length - next.length === 1
+  if (removedOneChar && input.previous[caret] === "-" && caret > 0) {
+    next = next.slice(0, caret - 1) + next.slice(caret)
+    caret -= 1
+  }
+  const value = formatVoucherCodeInput(next)
+  return { value, caret: caretAfterCodeChars(value, countCodeChars(next.slice(0, caret))) }
+}
+
 export const VoucherRedeem = () => {
   const { t, i18n } = useTranslation()
   /**
@@ -246,6 +336,14 @@ export const VoucherRedeem = () => {
   const [lookup, setLookup] = useState<LookupState>({ kind: "idle" })
   const [redeem, setRedeem] = useState<RedeemState>({ kind: "idle" })
   const confirmationRef = useRef<HTMLDivElement | null>(null)
+  const codeInputRef = useRef<HTMLInputElement | null>(null)
+  /**
+   * Kursor do przywrócenia po maskowaniu, albo `null` gdy nie ma czego
+   * przywracać. React przy kontrolowanym `<input>` odtwarza wartość, ale nie
+   * kursor — bez tego każde wpisanie znaku w ŚRODKU kodu wyrzucałoby kursor
+   * na koniec pola.
+   */
+  const codeCaretRef = useRef<number | null>(null)
   /**
    * Klucz idempotencji TEJ akcji użytkownika (UX-DR8, AC6).
    *
@@ -266,6 +364,25 @@ export const VoucherRedeem = () => {
       confirmationRef.current?.focus()
     }
   }, [redeem.kind])
+
+  useLayoutEffect(() => {
+    const caret = codeCaretRef.current
+    if (caret === null) {
+      return
+    }
+    codeCaretRef.current = null
+    codeInputRef.current?.setSelectionRange(caret, caret)
+  }, [code])
+
+  const onCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value, caret } = applyVoucherCodeEdit({
+      previous: code,
+      next: e.target.value,
+      caret: e.target.selectionStart ?? e.target.value.length,
+    })
+    codeCaretRef.current = caret
+    setCode(value)
+  }
 
   const reset = () => {
     setLookup({ kind: "idle" })
@@ -405,13 +522,27 @@ export const VoucherRedeem = () => {
           `_grow/tools/validate_vendor_panel_voucher_contrast.py`, która czyta
           TE KLASY, a nie ręczną listę par (review-fix cyklu 1, MEDIUM-2).
         */}
+        {/*
+          `autoCapitalize="characters"` jest dla KLAWIATURY telefonu (podnosi
+          shift), a nie dla wartości — wielkie litery wymusza maska, więc
+          wklejenie i klawiatura sprzętowa też je dostają.
+
+          ŚWIADOMIE BEZ `maxLength`: atrybut tnie ciąg SUROWY, zanim maska
+          zdąży odrzucić spacje i myślniki, więc wklejenie „ bo-k5t7 ma6v "
+          gubiło ostatni znak kodu, a dopisanie znaku w środku pełnego kodu
+          nie działało wcale (zmierzone: 2 czerwone testy maski). Limit należy
+          do maski, która liczy ZNAKI KODU, nie znaki w polu.
+        */}
         <input
+          ref={codeInputRef}
           type="text"
           inputMode="text"
           autoComplete="off"
+          autoCapitalize="characters"
+          autoCorrect="off"
           spellCheck={false}
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={onCodeChange}
           placeholder={t("voucher.redeem.code_placeholder")}
           className="w-full min-h-[44px] flex-1 rounded border border-gray-500 px-3 py-2 text-base placeholder:text-gray-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
           aria-label={t("voucher.redeem.code_label")}
