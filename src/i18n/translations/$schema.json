@@ -26,6 +26,9 @@
             "expired": {
               "type": "string"
             },
+            "refunded": {
+              "type": "string"
+            },
             "unknown": {
               "type": "string"
             }
@@ -36,6 +39,7 @@
             "claimed",
             "withdrawn",
             "expired",
+            "refunded",
             "unknown"
           ],
           "additionalProperties": false
@@ -118,6 +122,9 @@
                 "expired": {
                   "type": "string"
                 },
+                "refunded": {
+                  "type": "string"
+                },
                 "not_redeemable": {
                   "type": "string"
                 }
@@ -126,6 +133,7 @@
                 "already_redeemed",
                 "withdrawn",
                 "expired",
+                "refunded",
                 "not_redeemable"
               ],
               "additionalProperties": false
