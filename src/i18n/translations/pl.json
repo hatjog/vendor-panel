@@ -15,7 +15,7 @@
       "breadcrumb": "Realizacja vouchera",
       "title": "Zrealizuj voucher",
       "subtitle": "Wpisz kod vouchera od klientki, żeby sprawdzić voucher i oznaczyć go jako zrealizowany.",
-      "code_placeholder": "Kod vouchera",
+      "code_placeholder": "Kod vouchera (XX-XXXX-XXXX)",
       "code_label": "Kod vouchera",
       "lookup": "Sprawdź kod",
       "looking_up": "Sprawdzam…",

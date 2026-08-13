@@ -140,7 +140,36 @@ export const useUserMe = (
     ...options,
   })
 
-  return { ...data, ...rest }
+  /**
+   * DW-15-172 przepiął ten hook na `/vendor/sellers/me`, ale ta odpowiedź niesie
+   * `seller`, a KAŻDY konsument tego hooka czyta `member` — więc `member` był
+   * `undefined` ZAWSZE, nie tylko przy błędzie. Zgłosił to PO 2026-08-13:
+   * `UserBadge` renderuje `DropdownMenu.Trigger` z `disabled={!member}`, więc
+   * menu użytkownika nie dawało się otworzyć, a jedyne wyjście z sesji
+   * („Wyloguj") leży W ŚRODKU tego menu. Panel nie miał wylogowania i nie dało
+   * się zalogować innym kontem.
+   *
+   * Tożsamość salonu jest tu ODWZOROWANA na kształt członka zespołu, bo
+   * `/vendor/members/me` w tym forku nie jest dostępny (patrz komentarz wyżej),
+   * a konto salonu jest w tym panelu jedynym aktorem sesji. `role` jest
+   * literałem `owner`, nie zgadywaniem uprawnień: żaden konsument tego pola
+   * dziś nie czyta (zmierzone grepem), a autoryzacja należy do backendu.
+   */
+  const seller = (data as unknown as { seller?: VendorSeller } | undefined)
+    ?.seller
+  const member: VendorTeamMember | undefined = seller
+    ? {
+        id: seller.id ?? "",
+        seller_id: seller.id ?? "",
+        name: seller.name ?? "",
+        email: seller.email ?? "",
+        photo: seller.photo,
+        phone: seller.phone,
+        role: "owner",
+      }
+    : undefined
+
+  return { ...data, member, ...rest }
 }
 
 export const useStatistics = ({ from, to }: { from: string; to: string }) => {

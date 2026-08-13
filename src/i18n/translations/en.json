@@ -15,7 +15,7 @@
       "breadcrumb": "Redeem voucher",
       "title": "Redeem voucher",
       "subtitle": "Enter the recipient's voucher code to verify it and mark it as redeemed.",
-      "code_placeholder": "Voucher code",
+      "code_placeholder": "Voucher code (XX-XXXX-XXXX)",
       "code_label": "Voucher code",
       "lookup": "Look up",
       "looking_up": "Looking up…",

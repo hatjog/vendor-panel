@@ -91,8 +91,13 @@ const UserBadge = () => {
 
   return (
     <div className="p-3">
+      {/*
+        ŚWIADOMIE BEZ `disabled`: to menu jest JEDYNYM wyjściem z sesji
+        („Wyloguj"), więc brak tożsamości nie może go zamykać. Gdy `member`
+        nie dojedzie, użytkownik zobaczy szkielet zamiast nazwy — ale nadal
+        się wyloguje i zaloguje innym kontem (zgłoszenie PO 2026-08-13).
+      */}
       <DropdownMenu.Trigger
-        disabled={!member}
         className={clx(
           "bg-ui-bg-subtle grid w-full cursor-pointer grid-cols-[24px_1fr_15px] items-center gap-2 rounded-md py-1 pl-0.5 pr-2 outline-none",
           "hover:bg-ui-bg-subtle-hover",

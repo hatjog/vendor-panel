@@ -121,7 +121,9 @@ describe("AC2 — wszystkie teksty przez i18n, z polskimi tłumaczeniami", () =>
     expect(
       screen.getByRole("heading", { name: "Zrealizuj voucher" }),
     ).toBeTruthy()
-    expect(screen.getByPlaceholderText("Kod vouchera")).toBeTruthy()
+    expect(
+      screen.getByPlaceholderText("Kod vouchera (XX-XXXX-XXXX)"),
+    ).toBeTruthy()
     expect(screen.getByRole("button", { name: "Sprawdź kod" })).toBeTruthy()
 
     assertNoRawKeysNorMissingSentinel(container)
@@ -885,6 +887,83 @@ describe("review-fix cyklu 1 — tożsamość salonu i allow-lista stanów", () 
     const done = await screen.findByRole("status")
     expect(done.textContent).not.toContain("Stan vouchera zmienił się")
     expect(done.textContent).toContain("Voucher został zrealizowany wcześniej")
+  })
+})
+
+/**
+ * Maska pola kodu — zgłoszenie PO z 2026-08-13: „domyślnie wartości powinny być
+ * wprowadzane jako duże litery, pole powinno być sformatowane zgodnie z formatem
+ * kodu vouchera, myślniki nie powinny być wymagane do wprowadzenia".
+ *
+ * Dowodem jest WARTOŚĆ, która wypływa do lookupu, a nie sam napis w polu:
+ * kosmetolożka przepisuje kod z wydruku, więc to on musi trafić do URL-a.
+ */
+describe("pole kodu — maska XX-XXXX-XXXX", () => {
+  it("małe litery bez myślników stają się kanonicznym kodem i TAKI leci do lookupu", async () => {
+    const user = userEvent.setup()
+    fetchQuery.mockResolvedValueOnce({ voucher: voucherView("idle") })
+    renderScreen()
+
+    const input = screen.getByLabelText("Kod vouchera") as HTMLInputElement
+    await user.type(input, "gptest0001")
+    expect(input.value).toBe("GP-TEST-0001")
+
+    await user.click(screen.getByRole("button", { name: "Sprawdź kod" }))
+    expect(fetchQuery).toHaveBeenCalledWith(
+      "/vendor/vouchers/GP-TEST-0001/lookup",
+      expect.objectContaining({ method: "GET" }),
+    )
+  })
+
+  it("wklejony kod z myślnikami i spacjami nie podwaja separatorów", async () => {
+    const user = userEvent.setup()
+    renderScreen()
+
+    const input = screen.getByLabelText("Kod vouchera") as HTMLInputElement
+    await user.click(input)
+    await user.paste(" bo-k5t7 ma6v ")
+
+    expect(input.value).toBe("BO-K5T7-MA6V")
+  })
+
+  it("ucina nadmiar ponad 10 znaków kodu — dłuższy ciąg nie jest kodem vouchera", async () => {
+    const user = userEvent.setup()
+    renderScreen()
+
+    const input = screen.getByLabelText("Kod vouchera") as HTMLInputElement
+    await user.type(input, "bok5t7ma6vXXXX")
+
+    expect(input.value).toBe("BO-K5T7-MA6V")
+  })
+
+  it("Backspace na myślniku kasuje znak PRZED nim, a nie odtwarza separatora w kółko", async () => {
+    const user = userEvent.setup()
+    renderScreen()
+
+    const input = screen.getByLabelText("Kod vouchera") as HTMLInputElement
+    await user.type(input, "bok")
+    expect(input.value).toBe("BO-K")
+
+    // Dwa Backspace'y: pierwszy zdejmuje „K", drugi trafia w myślnik — bez
+    // obsługi tego przypadku maska wstawiałaby go z powrotem i klawisz
+    // wyglądałby na martwy.
+    await user.type(input, "{backspace}{backspace}")
+    expect(input.value).toBe("B")
+  })
+
+  it("znak dopisany w ŚRODKU kodu nie wyrzuca kursora na koniec pola", async () => {
+    const user = userEvent.setup()
+    renderScreen()
+
+    const input = screen.getByLabelText("Kod vouchera") as HTMLInputElement
+    await user.type(input, "botest0001")
+    expect(input.value).toBe("BO-TEST-0001")
+
+    input.setSelectionRange(2, 2)
+    await user.type(input, "x", { initialSelectionStart: 2, initialSelectionEnd: 2 })
+
+    expect(input.value).toBe("BO-XTES-T000")
+    expect(input.selectionStart).toBe(4)
   })
 })
 
