@@ -1,7 +1,6 @@
 // @vitest-environment node
 /**
- * Wyliczony zbiór ekranów panelu i inwentarz tras (GP v1.16.0 Story 5.1;
- * FR-18, AD-35, NFR-7).
+ * Wylicza rzeczywiste ekrany routingu i porównuje evidence z call-site'ami.
  *
  * CO MIERZY
  * - AC1: importuje REALNY `RouteMap` (razem z `RouteExtensions` i
@@ -93,14 +92,15 @@ function hasRenderer(node: AnyRoute): boolean {
   return typeof node.lazy === 'function' || Boolean(node.Component) || Boolean(node.element);
 }
 
-const MODULE_RE = /["']([^"']*\/src\/routes\/[^"']*)["']/;
+const MODULE_RE = /["']([^"']*\/routes\/[^"']*)["']/;
 const EXPORT_RE = /Component:\s*([A-Za-z0-9_$]+)/;
 
 function componentOf(node: AnyRoute): { module: string; exportName: string } {
   if (typeof node.lazy === 'function') {
     const text = String(node.lazy);
     const m = MODULE_RE.exec(text);
-    const mod = m ? m[1].slice(m[1].indexOf('/src/')) : `lazy:${text.slice(0, 80)}`;
+    const routeStart = m?.[1].lastIndexOf('routes/') ?? -1;
+    const mod = routeStart >= 0 ? `src/${m![1].slice(routeStart)}` : `lazy:${text.slice(0, 80)}`;
     const ex = EXPORT_RE.exec(text);
     return { module: mod, exportName: ex ? ex[1] : 'default' };
   }
@@ -386,7 +386,7 @@ function scalar(v: YamlValue): string {
 
 function gitHead(dir: string): string {
   try {
-    return execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).trim();
   } catch {
     return 'unknown';
   }
@@ -603,13 +603,17 @@ describe('AC2: inwentarz tras — każdy konsument istnieje, każdy call-site je
       .filter(
         r =>
           !/^(GET|POST|PUT|PATCH|DELETE)$/.test(String(r.method)) ||
-          !String(r.canonical_path).startsWith('/vendor/') ||
+          !String(r.canonical_path).startsWith('/') ||
           !Array.isArray(r.consumers) ||
           (r.consumers as YamlValue[]).length === 0 ||
           !Array.isArray(r.transport)
       )
       .map(r => `${String(r.method)} ${String(r.canonical_path)}`);
     expect(bad).toEqual([]);
+    const nonVendor = routes
+      .filter(r => !String(r.canonical_path).startsWith('/vendor/'))
+      .map(r => `${String(r.method)} ${String(r.canonical_path)}`);
+    expect(nonVendor).toEqual(['GET /store/currencies']);
   });
 
   it('każdy konsument wskazuje istniejący plik, linię z anchorem i transport widoczny w kodzie', () => {
@@ -649,13 +653,13 @@ describe('AC2: inwentarz tras — każdy konsument istnieje, każdy call-site je
     expect(problems).toEqual([]);
   });
 
-  it('każda linia z literałem /vendor/... w src/** jest objęta konsumentem (usunięty konsument = czerwono z nazwą)', () => {
+  it('każda linia z literałem HTTP panelu w src/** jest objęta konsumentem (usunięty konsument = czerwono z nazwą)', () => {
     const covered = new Set<string>();
     for (const r of routes) {
       for (const c of r.consumers as { [k: string]: YamlValue }[])
         covered.add(`${String(c.file).replace(/^GP\/vendor-panel\//, '')}:${Number(c.line)}`);
     }
-    const literalRe = /(["'`]|\}|\$\{[^}]*\})\/vendor\/[A-Za-z0-9]/;
+    const literalRe = /(["'`]|\}|\$\{[^}]*\})\/(vendor|store)\/[A-Za-z0-9]/;
     const uncovered: string[] = [];
     for (const file of listSourceFiles(path.join(PANEL_ROOT, 'src'))) {
       const rel = path.relative(PANEL_ROOT, file).split(path.sep).join('/');
@@ -716,12 +720,15 @@ describe('AC4: nośniki konfiguracji LAN są nazwane po źródłach i wolne od p
     const names = items.map(i => String(i.name));
     for (const required of [
       'VITE_MEDUSA_BACKEND_URL',
+      'VITE_MEDUSA_BASE',
       'VITE_PUBLISHABLE_API_KEY',
       '__BACKEND_URL__',
+      '__PUBLISHABLE_API_KEY__',
       'x-publishable-api-key',
       'x-seller-id',
       'connect-src',
-      'VENDOR_CORS'
+      'VENDOR_CORS',
+      '/vendor/* matcher'
     ]) {
       expect(names, `brak nośnika ${required}`).toContain(required);
     }
@@ -735,7 +742,8 @@ describe('AC4: nośniki konfiguracji LAN są nazwane po źródłach i wolne od p
         problems.push(`${String(it.name)}: plik ${anchor} nie istnieje`);
         continue;
       }
-      if (!readFileSync(abs, 'utf8').includes(String(it.name)))
+      const sourceName = String(it.name).replace(/ matcher$/, '');
+      if (!readFileSync(abs, 'utf8').includes(sourceName))
         problems.push(`${String(it.name)}: nazwa nie występuje w ${anchor}`);
     }
     expect(problems).toEqual([]);
