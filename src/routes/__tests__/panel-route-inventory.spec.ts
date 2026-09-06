@@ -62,6 +62,7 @@ const ROUTING_SNAPSHOT_PATH = path.join(
   PANEL_ROOT,
   'src/routes/__generated__/panel-route-map.json'
 );
+const LIVE_ROUTING_SNAPSHOT_PATH = process.env.GP_PANEL_INVENTORY_DERIVED_OUTPUT;
 const WRITE_MODE = process.env.GP_PANEL_INVENTORY_WRITE === '1';
 const SCHEMA_VERSION = 'gp-panel-screen-set.v1';
 const ROUTER_PROVIDER_PATH = path.join(
@@ -495,6 +496,17 @@ function routingSnapshot() {
     source_fingerprint: routingSnapshotSourceFingerprint(),
     screens: screens.map(s => ({ ...s }))
   };
+}
+
+// CLI walidatora przekazuje ścieżkę tymczasową. Dzięki temu porównuje evidence
+// z wynikiem bieżącego importu RouteMap, a nie tylko z committowanym snapshotem.
+if (LIVE_ROUTING_SNAPSHOT_PATH) {
+  mkdirSync(path.dirname(LIVE_ROUTING_SNAPSHOT_PATH), { recursive: true });
+  writeFileSync(
+    LIVE_ROUTING_SNAPSHOT_PATH,
+    `${JSON.stringify(routingSnapshot(), null, 2)}\n`,
+    'utf8'
+  );
 }
 
 describe('AC1: wyliczony zbiór ekranów panelu z realnego RouteMap', () => {
