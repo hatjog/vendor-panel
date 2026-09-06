@@ -1,0 +1,1293 @@
+{
+  "schema_version": "gp-panel-route-map.v1",
+  "generated_by": "panel-route-inventory.spec.ts:deriveScreens(RouteMap)",
+  "screens": [
+    {
+      "screen_id": "campaigns.[id].add-promotions",
+      "route_pattern": "/campaigns/:id/add-promotions",
+      "component_module": "src/routes/campaigns/add-campaign-promotions/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "campaigns.[id].configuration",
+      "route_pattern": "/campaigns/:id/configuration",
+      "component_module": "src/routes/campaigns/campaign-configuration/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "campaigns.[id].edit",
+      "route_pattern": "/campaigns/:id/edit",
+      "component_module": "src/routes/campaigns/campaign-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "campaigns.[id].edit-budget",
+      "route_pattern": "/campaigns/:id/edit-budget",
+      "component_module": "src/routes/campaigns/campaign-budget-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "campaigns.create",
+      "route_pattern": "/campaigns/create",
+      "component_module": "src/routes/campaigns/campaign-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "campaigns.index",
+      "route_pattern": "/campaigns",
+      "component_module": "src/routes/campaigns/campaign-list/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "categories.[id].edit",
+      "route_pattern": "/categories/:id/edit",
+      "component_module": "src/routes/categories/category-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "categories.[id].metadata.edit",
+      "route_pattern": "/categories/:id/metadata/edit",
+      "component_module": "src/routes/categories/categories-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "categories.[id].organize",
+      "route_pattern": "/categories/:id/organize",
+      "component_module": "src/routes/categories/category-organize/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "categories.[id].products",
+      "route_pattern": "/categories/:id/products",
+      "component_module": "src/routes/categories/category-products/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "categories.create",
+      "route_pattern": "/categories/create",
+      "component_module": "src/routes/categories/category-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "categories.organize",
+      "route_pattern": "/categories/organize",
+      "component_module": "src/routes/categories/category-organize/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "collections.[id].metadata.edit",
+      "route_pattern": "/collections/:id/metadata/edit",
+      "component_module": "src/routes/collections/collection-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "collections.[id].products",
+      "route_pattern": "/collections/:id/products",
+      "component_module": "src/routes/collections/collection-add-products/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "collections.create",
+      "route_pattern": "/collections/create",
+      "component_module": "src/routes/collections/collection-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "customer-groups.[id].add-customers",
+      "route_pattern": "/customer-groups/:id/add-customers",
+      "component_module": "src/routes/customer-groups/customer-group-add-customers/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "customer-groups.[id].edit",
+      "route_pattern": "/customer-groups/:id/edit",
+      "component_module": "src/routes/customer-groups/customer-group-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "customer-groups.[id].metadata.edit",
+      "route_pattern": "/customer-groups/:id/metadata/edit",
+      "component_module": "src/routes/customer-groups/customer-group-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "customer-groups.create",
+      "route_pattern": "/customer-groups/create",
+      "component_module": "src/routes/customer-groups/customer-group-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "customers.[id].add-customer-groups",
+      "route_pattern": "/customers/:id/add-customer-groups",
+      "component_module": "src/routes/customers/customers-add-customer-group/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "customers.[id].edit",
+      "route_pattern": "/customers/:id/edit",
+      "component_module": "src/routes/customers/customer-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "customers.[id].metadata.edit",
+      "route_pattern": "/customers/:id/metadata/edit",
+      "component_module": "src/routes/customers/customer-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "customers.create",
+      "route_pattern": "/customers/create",
+      "component_module": "src/routes/customers/customer-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "dashboard",
+      "route_pattern": "/dashboard",
+      "component_module": "src/routes/dashboard/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "home",
+      "route_pattern": "/",
+      "component_module": "src/routes/home/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "inventory.[id].attributes",
+      "route_pattern": "/inventory/:id/attributes",
+      "component_module": "src/routes/inventory/inventory-detail/components/edit-inventory-item-attributes/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "inventory.[id].edit",
+      "route_pattern": "/inventory/:id/edit",
+      "component_module": "src/routes/inventory/inventory-detail/components/edit-inventory-item/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "inventory.[id].locations",
+      "route_pattern": "/inventory/:id/locations",
+      "component_module": "src/routes/inventory/inventory-detail/components/manage-locations/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "inventory.[id].locations.[location_id]",
+      "route_pattern": "/inventory/:id/locations/:location_id",
+      "component_module": "src/routes/inventory/inventory-detail/components/adjust-inventory/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "inventory.[id].metadata.edit",
+      "route_pattern": "/inventory/:id/metadata/edit",
+      "component_module": "src/routes/inventory/inventory-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "inventory.create",
+      "route_pattern": "/inventory/create",
+      "component_module": "src/routes/inventory/inventory-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "inventory.stock",
+      "route_pattern": "/inventory/stock",
+      "component_module": "src/routes/inventory/inventory-stock/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "invite",
+      "route_pattern": "/invite",
+      "component_module": "src/routes/invite/index.ts",
+      "component_export": "default",
+      "access": "public",
+      "layout": "PublicLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "login",
+      "route_pattern": "/login",
+      "component_module": "src/routes/login/index.ts",
+      "component_export": "default",
+      "access": "public",
+      "layout": "PublicLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "messages",
+      "route_pattern": "/messages",
+      "component_module": "src/routes/messages/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "orders.[id].[f_id].create-shipment",
+      "route_pattern": "/orders/:id/:f_id/create-shipment",
+      "component_module": "src/routes/orders/order-create-shipment/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "orders.[id].allocate-items",
+      "route_pattern": "/orders/:id/allocate-items",
+      "component_module": "src/routes/orders/order-allocate-items/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "orders.[id].fulfillment",
+      "route_pattern": "/orders/:id/fulfillment",
+      "component_module": "src/routes/orders/order-create-fulfillment/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "orders.index",
+      "route_pattern": "/orders",
+      "component_module": "src/routes/orders/order-list/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "price-lists.[id].configuration",
+      "route_pattern": "/price-lists/:id/configuration",
+      "component_module": "src/routes/price-lists/price-list-configuration/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "price-lists.[id].edit",
+      "route_pattern": "/price-lists/:id/edit",
+      "component_module": "src/routes/price-lists/price-list-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "price-lists.[id].products.add",
+      "route_pattern": "/price-lists/:id/products/add",
+      "component_module": "src/routes/price-lists/price-list-prices-add/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "price-lists.[id].products.edit",
+      "route_pattern": "/price-lists/:id/products/edit",
+      "component_module": "src/routes/price-lists/price-list-prices-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "price-lists.create",
+      "route_pattern": "/price-lists/create",
+      "component_module": "src/routes/price-lists/price-list-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].additional-attributes",
+      "route_pattern": "/products/:id/additional-attributes",
+      "component_module": "src/routes/products/product-additional-attributes/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].attributes",
+      "route_pattern": "/products/:id/attributes",
+      "component_module": "src/routes/products/product-attributes/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].edit",
+      "route_pattern": "/products/:id/edit",
+      "component_module": "src/routes/products/product-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].edit-stocks-and-prices",
+      "route_pattern": "/products/:id/edit-stocks-and-prices",
+      "component_module": "src/routes/products/product-edit-stocks-and-prices/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].edit-variant",
+      "route_pattern": "/products/:id/edit-variant",
+      "component_module": "src/routes/product-variants/product-variant-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].media",
+      "route_pattern": "/products/:id/media",
+      "component_module": "src/routes/products/product-media/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].metadata.edit",
+      "route_pattern": "/products/:id/metadata/edit",
+      "component_module": "src/routes/products/product-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].options.[option_id].edit",
+      "route_pattern": "/products/:id/options/:option_id/edit",
+      "component_module": "src/routes/products/product-edit-option/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].options.create",
+      "route_pattern": "/products/:id/options/create",
+      "component_module": "src/routes/products/product-create-option/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].organization",
+      "route_pattern": "/products/:id/organization",
+      "component_module": "src/routes/products/product-organization/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].prices",
+      "route_pattern": "/products/:id/prices",
+      "component_module": "src/routes/products/product-prices/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].sales-channels",
+      "route_pattern": "/products/:id/sales-channels",
+      "component_module": "src/routes/products/product-sales-channels/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].shipping-profile",
+      "route_pattern": "/products/:id/shipping-profile",
+      "component_module": "src/routes/products/product-shipping-profile/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].stock",
+      "route_pattern": "/products/:id/stock",
+      "component_module": "src/routes/products/product-stock/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].variants.[variant_id].edit",
+      "route_pattern": "/products/:id/variants/:variant_id/edit",
+      "component_module": "src/routes/product-variants/product-variant-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].variants.[variant_id].manage-items",
+      "route_pattern": "/products/:id/variants/:variant_id/manage-items",
+      "component_module": "src/routes/product-variants/product-variant-manage-inventory-items/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].variants.[variant_id].metadata.edit",
+      "route_pattern": "/products/:id/variants/:variant_id/metadata/edit",
+      "component_module": "src/routes/product-variants/product-variant-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].variants.[variant_id].prices",
+      "route_pattern": "/products/:id/variants/:variant_id/prices",
+      "component_module": "src/routes/products/product-prices/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.[id].variants.create",
+      "route_pattern": "/products/:id/variants/create",
+      "component_module": "src/routes/products/product-create-variant/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.create",
+      "route_pattern": "/products/create",
+      "component_module": "src/routes/products/product-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.export",
+      "route_pattern": "/products/export",
+      "component_module": "src/routes/products/product-export/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "products.import",
+      "route_pattern": "/products/import",
+      "component_module": "src/routes/products/product-import/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "promotions.[id].[ruleType].edit",
+      "route_pattern": "/promotions/:id/:ruleType/edit",
+      "component_module": "src/routes/promotions/common/edit-rules/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "promotions.[id].add-to-campaign",
+      "route_pattern": "/promotions/:id/add-to-campaign",
+      "component_module": "src/routes/promotions/promotion-add-campaign/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "promotions.[id].edit",
+      "route_pattern": "/promotions/:id/edit",
+      "component_module": "src/routes/promotions/promotion-edit-details/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "promotions.create",
+      "route_pattern": "/promotions/create",
+      "component_module": "src/routes/promotions/promotion-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "promotions.index",
+      "route_pattern": "/promotions",
+      "component_module": "src/routes/promotions/promotion-list/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "register",
+      "route_pattern": "/register",
+      "component_module": "src/routes/register/index.ts",
+      "component_export": "default",
+      "access": "public",
+      "layout": "PublicLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "requests.[id]",
+      "route_pattern": "/requests/:id",
+      "component_module": "src/routes/requests/request-detail/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "requests.categories.[id].edit",
+      "route_pattern": "/requests/categories/:id/edit",
+      "component_module": "src/routes/categories/category-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "requests.categories.create",
+      "route_pattern": "/requests/categories/create",
+      "component_module": "src/routes/categories/category-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "requests.collections.[id].edit",
+      "route_pattern": "/requests/collections/:id/edit",
+      "component_module": "src/routes/collections/collection-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "requests.collections.create",
+      "route_pattern": "/requests/collections/create",
+      "component_module": "src/routes/collections/collection-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "requests.index",
+      "route_pattern": "/requests",
+      "component_module": "src/routes/requests/requests-list/index.ts",
+      "component_export": "Requests",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "requests.orders.[id].review",
+      "route_pattern": "/requests/orders/:id/review",
+      "component_module": "src/routes/requests/request-order-return/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "requests.reviews.[id].edit",
+      "route_pattern": "/requests/reviews/:id/edit",
+      "component_module": "src/routes/reviews/review-report/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "reservations.[id].edit",
+      "route_pattern": "/reservations/:id/edit",
+      "component_module": "src/routes/reservations/reservation-detail/components/edit-reservation/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "reservations.[id].metadata.edit",
+      "route_pattern": "/reservations/:id/metadata/edit",
+      "component_module": "src/routes/reservations/reservation-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "reservations.create",
+      "route_pattern": "/reservations/create",
+      "component_module": "src/routes/reservations/reservation-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "reset-password",
+      "route_pattern": "/reset-password",
+      "component_module": "src/routes/reset-password/index.ts",
+      "component_export": "default",
+      "access": "public",
+      "layout": "PublicLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "reviews.[id].reply",
+      "route_pattern": "/reviews/:id/reply",
+      "component_module": "src/routes/reviews/review-reply/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "reviews.[id].report",
+      "route_pattern": "/reviews/:id/report",
+      "component_module": "src/routes/reviews/review-report/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "reviews.index",
+      "route_pattern": "/reviews",
+      "component_module": "src/routes/reviews/reviews-list/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "security",
+      "route_pattern": "/security",
+      "component_module": "src/routes/security/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].edit",
+      "route_pattern": "/settings/locations/:location_id/edit",
+      "component_module": "src/routes/locations/location-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].fulfillment-providers",
+      "route_pattern": "/settings/locations/:location_id/fulfillment-providers",
+      "component_module": "src/routes/locations/location-fulfillment-providers/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].areas",
+      "route_pattern": "/settings/locations/:location_id/fulfillment-set/:fset_id/service-zone/:zone_id/areas",
+      "component_module": "src/routes/locations/location-service-zone-manage-areas/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].edit",
+      "route_pattern": "/settings/locations/:location_id/fulfillment-set/:fset_id/service-zone/:zone_id/edit",
+      "component_module": "src/routes/locations/location-service-zone-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].shipping-option.[so_id].edit",
+      "route_pattern": "/settings/locations/:location_id/fulfillment-set/:fset_id/service-zone/:zone_id/shipping-option/:so_id/edit",
+      "component_module": "src/routes/locations/location-service-zone-shipping-option-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].shipping-option.[so_id].pricing",
+      "route_pattern": "/settings/locations/:location_id/fulfillment-set/:fset_id/service-zone/:zone_id/shipping-option/:so_id/pricing",
+      "component_module": "src/routes/locations/location-service-zone-shipping-option-pricing/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].shipping-option.create",
+      "route_pattern": "/settings/locations/:location_id/fulfillment-set/:fset_id/service-zone/:zone_id/shipping-option/create",
+      "component_module": "src/routes/locations/location-service-zone-shipping-option-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].fulfillment-set.[fset_id].service-zones.create",
+      "route_pattern": "/settings/locations/:location_id/fulfillment-set/:fset_id/service-zones/create",
+      "component_module": "src/routes/locations/location-service-zone-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.[location_id].sales-channels",
+      "route_pattern": "/settings/locations/:location_id/sales-channels",
+      "component_module": "src/routes/locations/location-sales-channels/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.create",
+      "route_pattern": "/settings/locations/create",
+      "component_module": "src/routes/locations/location-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.index",
+      "route_pattern": "/settings/locations",
+      "component_module": "src/routes/locations/location-list/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.shipping-profiles.[shipping_profile_id].metadata.edit",
+      "route_pattern": "/settings/locations/shipping-profiles/:shipping_profile_id/metadata/edit",
+      "component_module": "src/routes/shipping-profiles/shipping-profile-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.locations.shipping-profiles.create",
+      "route_pattern": "/settings/locations/shipping-profiles/create",
+      "component_module": "src/routes/shipping-profiles/shipping-profile-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.product-tags.[id].edit",
+      "route_pattern": "/settings/product-tags/:id/edit",
+      "component_module": "src/routes/product-tags/product-tag-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.product-tags.create",
+      "route_pattern": "/settings/product-tags/create",
+      "component_module": "src/routes/product-tags/product-tag-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.product-types.[id].edit",
+      "route_pattern": "/settings/product-types/:id/edit",
+      "component_module": "src/routes/product-types/product-type-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.product-types.create",
+      "route_pattern": "/settings/product-types/create",
+      "component_module": "src/routes/product-types/product-type-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.profile.edit",
+      "route_pattern": "/settings/profile/edit",
+      "component_module": "src/routes/profile/profile-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.publishable-api-keys.[id].edit",
+      "route_pattern": "/settings/publishable-api-keys/:id/edit",
+      "component_module": "src/routes/api-key-management/api-key-management-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.publishable-api-keys.[id].sales-channels",
+      "route_pattern": "/settings/publishable-api-keys/:id/sales-channels",
+      "component_module": "src/routes/api-key-management/api-key-management-sales-channels/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.publishable-api-keys.create",
+      "route_pattern": "/settings/publishable-api-keys/create",
+      "component_module": "src/routes/api-key-management/api-key-management-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.regions.[id].countries.add",
+      "route_pattern": "/settings/regions/:id/countries/add",
+      "component_module": "src/routes/regions/region-add-countries/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.regions.[id].edit",
+      "route_pattern": "/settings/regions/:id/edit",
+      "component_module": "src/routes/regions/region-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.regions.[id].metadata.edit",
+      "route_pattern": "/settings/regions/:id/metadata/edit",
+      "component_module": "src/routes/regions/region-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.regions.create",
+      "route_pattern": "/settings/regions/create",
+      "component_module": "src/routes/regions/region-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.return-reasons.[id].edit",
+      "route_pattern": "/settings/return-reasons/:id/edit",
+      "component_module": "src/routes/return-reasons/return-reason-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.return-reasons.create",
+      "route_pattern": "/settings/return-reasons/create",
+      "component_module": "src/routes/return-reasons/return-reason-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.sales-channels.[id].add-products",
+      "route_pattern": "/settings/sales-channels/:id/add-products",
+      "component_module": "src/routes/sales-channels/sales-channel-add-products/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.sales-channels.[id].edit",
+      "route_pattern": "/settings/sales-channels/:id/edit",
+      "component_module": "src/routes/sales-channels/sales-channel-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.sales-channels.[id].metadata.edit",
+      "route_pattern": "/settings/sales-channels/:id/metadata/edit",
+      "component_module": "src/routes/sales-channels/sales-channel-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.sales-channels.create",
+      "route_pattern": "/settings/sales-channels/create",
+      "component_module": "src/routes/sales-channels/sales-channel-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.secret-api-keys.[id].edit",
+      "route_pattern": "/settings/secret-api-keys/:id/edit",
+      "component_module": "src/routes/api-key-management/api-key-management-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.secret-api-keys.create",
+      "route_pattern": "/settings/secret-api-keys/create",
+      "component_module": "src/routes/api-key-management/api-key-management-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.store.currencies",
+      "route_pattern": "/settings/store/currencies",
+      "component_module": "src/routes/store/store-add-currencies/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.store.edit",
+      "route_pattern": "/settings/store/edit",
+      "component_module": "src/routes/store/store-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.store.edit-company",
+      "route_pattern": "/settings/store/edit-company",
+      "component_module": "src/routes/store/store-edit-company/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.store.metadata.edit",
+      "route_pattern": "/settings/store/metadata/edit",
+      "component_module": "src/routes/store/store-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].overrides.[tax_rate_id].edit",
+      "route_pattern": "/settings/tax-regions/:id/overrides/:tax_rate_id/edit",
+      "component_module": "src/routes/tax-regions/tax-region-tax-override-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].overrides.create",
+      "route_pattern": "/settings/tax-regions/:id/overrides/create",
+      "component_module": "src/routes/tax-regions/tax-region-tax-override-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].provinces.[province_id].overrides.[tax_rate_id].edit",
+      "route_pattern": "/settings/tax-regions/:id/provinces/:province_id/overrides/:tax_rate_id/edit",
+      "component_module": "src/routes/tax-regions/tax-region-tax-override-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].provinces.[province_id].overrides.create",
+      "route_pattern": "/settings/tax-regions/:id/provinces/:province_id/overrides/create",
+      "component_module": "src/routes/tax-regions/tax-region-tax-override-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].provinces.[province_id].tax-rates.[tax_rate_id].edit",
+      "route_pattern": "/settings/tax-regions/:id/provinces/:province_id/tax-rates/:tax_rate_id/edit",
+      "component_module": "src/routes/tax-regions/tax-region-tax-rate-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].provinces.[province_id].tax-rates.create",
+      "route_pattern": "/settings/tax-regions/:id/provinces/:province_id/tax-rates/create",
+      "component_module": "src/routes/tax-regions/tax-region-tax-rate-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].provinces.create",
+      "route_pattern": "/settings/tax-regions/:id/provinces/create",
+      "component_module": "src/routes/tax-regions/tax-region-province-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].tax-rates.[tax_rate_id].edit",
+      "route_pattern": "/settings/tax-regions/:id/tax-rates/:tax_rate_id/edit",
+      "component_module": "src/routes/tax-regions/tax-region-tax-rate-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.[id].tax-rates.create",
+      "route_pattern": "/settings/tax-regions/:id/tax-rates/create",
+      "component_module": "src/routes/tax-regions/tax-region-tax-rate-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.tax-regions.create",
+      "route_pattern": "/settings/tax-regions/create",
+      "component_module": "src/routes/tax-regions/tax-region-create/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.users.[id].edit",
+      "route_pattern": "/settings/users/:id/edit",
+      "component_module": "src/routes/users/user-edit/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.users.[id].metadata.edit",
+      "route_pattern": "/settings/users/:id/metadata/edit",
+      "component_module": "src/routes/users/user-metadata/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.users.invite",
+      "route_pattern": "/settings/users/invite",
+      "component_module": "src/routes/users/user-invite/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.workflows.[id]",
+      "route_pattern": "/settings/workflows/:id",
+      "component_module": "src/routes/workflow-executions/workflow-execution-detail/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "settings.workflows.index",
+      "route_pattern": "/settings/workflows",
+      "component_module": "src/routes/workflow-executions/workflow-execution-list/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "SettingsLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "splat",
+      "route_pattern": "/*",
+      "component_module": "src/routes/no-match/index.ts",
+      "component_export": "default",
+      "access": "public",
+      "layout": "PublicLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "stripe-connect",
+      "route_pattern": "/stripe-connect",
+      "component_module": "src/routes/stripe-connect/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    },
+    {
+      "screen_id": "vouchers.redeem",
+      "route_pattern": "/vouchers/redeem",
+      "component_module": "src/routes/vouchers/index.ts",
+      "component_export": "default",
+      "access": "protected",
+      "layout": "MainLayout",
+      "source": "route-map"
+    }
+  ]
+}

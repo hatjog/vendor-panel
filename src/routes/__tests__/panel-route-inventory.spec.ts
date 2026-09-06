@@ -28,7 +28,7 @@
  * (default_flow_style=False) i serializer poniżej. Nieznana składnia rzuca.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -57,6 +57,10 @@ const EVIDENCE_DIR =
   );
 const SCREEN_SET_PATH = path.join(EVIDENCE_DIR, 'panel-screen-set.yaml');
 const INVENTORY_PATH = path.join(EVIDENCE_DIR, 'panel-route-inventory.yaml');
+const ROUTING_SNAPSHOT_PATH = path.join(
+  PANEL_ROOT,
+  'src/routes/__generated__/panel-route-map.json'
+);
 const WRITE_MODE = process.env.GP_PANEL_INVENTORY_WRITE === '1';
 const SCHEMA_VERSION = 'gp-panel-screen-set.v1';
 
@@ -172,7 +176,11 @@ export function deriveScreens(
         name === 'SettingsLayout' ||
         name === 'PublicLayout' ||
         name === 'Outlet';
-      if (node.path !== undefined && hasRenderer(node) && !isLayoutNode) {
+      // Renderowalny rodzic z dziećmi jest gałęzią nawigacji, nie dodatkowym
+      // ekranem. Jawny index dziecka reprezentuje jego ekran bazowy, więc
+      // /products/:id nie może pojawić się obok products.[id].index.
+      const isRenderableLeaf = !node.children || node.children.length === 0;
+      if (node.path !== undefined && hasRenderer(node) && !isLayoutNode && isRenderableLeaf) {
         const { module, exportName } = componentOf(node);
         out.push({
           screen_id: screenIdOf(pattern, isIndex),
@@ -454,6 +462,14 @@ const screens = deriveScreens(RouteMap, {
   settingsExtensions: SettingsExtensions
 });
 
+function routingSnapshot() {
+  return {
+    schema_version: 'gp-panel-route-map.v1',
+    generated_by: 'panel-route-inventory.spec.ts:deriveScreens(RouteMap)',
+    screens: screens.map(s => ({ ...s }))
+  };
+}
+
 describe('AC1: wyliczony zbiór ekranów panelu z realnego RouteMap', () => {
   it('RouteMap zawiera przez tożsamość każdy węzeł RouteExtensions i SettingsExtensions', () => {
     const all = new Set<RouteObject>();
@@ -493,6 +509,16 @@ describe('AC1: wyliczony zbiór ekranów panelu z realnego RouteMap', () => {
       settingsExtensions: []
     });
     expect(branchOnly).toEqual([]);
+  });
+
+  it('walker nie liczy renderowalnego rodzica z dzieckiem jako dwóch ekranów', () => {
+    const Parent = () => null;
+    const Index = () => null;
+    const derived = deriveScreens(
+      [{ path: '/parent', Component: Parent, children: [{ path: '', Component: Index }] }],
+      { routeExtensions: [], settingsExtensions: [] }
+    );
+    expect(derived.map(screen => screen.screen_id)).toEqual(['parent.index']);
   });
 
   it('zbiór ekranów jest niepusty, deterministyczny i w całości sklasyfikowany', () => {
@@ -547,7 +573,11 @@ describe('AC1: wyliczony zbiór ekranów panelu z realnego RouteMap', () => {
         parity: { missing_in_artifact: [], missing_in_routing: [] }
       };
       writeFileSync(SCREEN_SET_PATH, `${dumpYamlSubset(doc)}\n`, 'utf8');
+      mkdirSync(path.dirname(ROUTING_SNAPSHOT_PATH), { recursive: true });
+      writeFileSync(ROUTING_SNAPSHOT_PATH, `${JSON.stringify(routingSnapshot(), null, 2)}\n`, 'utf8');
     }
+    expect(existsSync(ROUTING_SNAPSHOT_PATH), 'brak snapshotu wygenerowanego z RouteMap').toBe(true);
+    expect(JSON.parse(readFileSync(ROUTING_SNAPSHOT_PATH, 'utf8'))).toEqual(routingSnapshot());
     const doc = readArtifact(SCREEN_SET_PATH);
     expect(doc.schema_version).toBe(SCHEMA_VERSION);
     const artScreens = (doc.screens as YamlValue[] | null) ?? [];
