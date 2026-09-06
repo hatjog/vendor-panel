@@ -1,6 +1,7 @@
 {
   "schema_version": "gp-panel-route-map.v1",
   "generated_by": "panel-route-inventory.spec.ts:deriveScreens(RouteMap)",
+  "source_fingerprint": "sha256:a10313bd57d17fcc70967c0811a3b942d82f421e7583d7df451f140841958ff9",
   "screens": [
     {
       "screen_id": "campaigns.[id].add-promotions",

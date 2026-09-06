@@ -65,6 +65,8 @@ describe("voucherFetch — nośnik tożsamości salonu", () => {
     const [, init] = fetchMock.mock.calls[0]
     const headers = init.headers as Record<string, string>
     expect(headers.authorization).toBe("Bearer tok_1")
+    expect(headers["x-publishable-api-key"]).toBe("")
+    expect(headers[SELLER_ID_HEADER]).toBe("sel_01ABC")
     expect(headers["Idempotency-Key"]).toBe("key-1")
     expect(init.credentials).toBe("include")
     expect(init.method).toBe("POST")

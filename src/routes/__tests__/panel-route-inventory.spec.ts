@@ -28,6 +28,7 @@
  * (default_flow_style=False) i serializer poniżej. Nieznana składnia rzuca.
  */
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,6 +69,24 @@ const ROUTER_PROVIDER_PATH = path.join(
   'src/providers/router-provider/router-provider.tsx'
 );
 const ROUTER_BASENAME_EXPRESSION = '__BASE__ || "/"';
+const ROUTING_SNAPSHOT_INPUTS = [
+  'src/routes/__tests__/panel-route-inventory.spec.ts',
+  'src/providers/router-provider/route-map.tsx',
+  'src/providers/router-provider/route-extensions.tsx',
+  'src/providers/router-provider/settings-extensions.tsx',
+  'src/extensions/routes/utils.ts'
+] as const;
+
+function routingSnapshotSourceFingerprint(): string {
+  const hash = createHash('sha256');
+  for (const relative of ROUTING_SNAPSHOT_INPUTS) {
+    hash.update(relative);
+    hash.update('\0');
+    hash.update(readFileSync(path.join(PANEL_ROOT, relative)));
+    hash.update('\0');
+  }
+  return `sha256:${hash.digest('hex')}`;
+}
 
 // ---------------------------------------------------------------------------
 // Walker po realnym drzewie routera
@@ -473,6 +492,7 @@ function routingSnapshot() {
   return {
     schema_version: 'gp-panel-route-map.v1',
     generated_by: 'panel-route-inventory.spec.ts:deriveScreens(RouteMap)',
+    source_fingerprint: routingSnapshotSourceFingerprint(),
     screens: screens.map(s => ({ ...s }))
   };
 }
