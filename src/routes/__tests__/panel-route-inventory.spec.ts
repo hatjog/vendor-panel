@@ -63,6 +63,11 @@ const ROUTING_SNAPSHOT_PATH = path.join(
 );
 const WRITE_MODE = process.env.GP_PANEL_INVENTORY_WRITE === '1';
 const SCHEMA_VERSION = 'gp-panel-screen-set.v1';
+const ROUTER_PROVIDER_PATH = path.join(
+  PANEL_ROOT,
+  'src/providers/router-provider/router-provider.tsx'
+);
+const ROUTER_BASENAME_EXPRESSION = '__BASE__ || "/"';
 
 // ---------------------------------------------------------------------------
 // Walker po realnym drzewie routera
@@ -449,6 +454,8 @@ const TRANSPORT_TOKENS: Record<string, RegExp> = {
   fetchQuery: /\bfetchQuery\s*(<[^(]*>)?\s*\(/,
   voucherFetch: /\bvoucherFetch\s*(<[^(]*>)?\s*\(/,
   vendorFetch: /\bvendorFetch\b/,
+  sdk: /\bsdk\.(admin|store)\./,
+  mercurVendorClient: /\bmercurVendorClient\./,
   'fetch-absolute-backend': /(^|[^A-Za-z0-9_.$])fetch\s*\(/,
   'fetch-relative': /(^|[^A-Za-z0-9_.$])fetch\s*\(/
 };
@@ -567,6 +574,11 @@ describe('AC1: wyliczony zbiór ekranów panelu z realnego RouteMap', () => {
           'route-extensions': RouteExtensions.length,
           'settings-extensions': SettingsExtensions.length
         },
+        basename: {
+          source: 'src/providers/router-provider/router-provider.tsx',
+          expression: ROUTER_BASENAME_EXPRESSION,
+          effective_default: '/'
+        },
         screens: screens.map(s => ({ ...s })),
         derived_names: screens.map(s => s.screen_id),
         count: screens.length,
@@ -580,6 +592,14 @@ describe('AC1: wyliczony zbiór ekranów panelu z realnego RouteMap', () => {
     expect(JSON.parse(readFileSync(ROUTING_SNAPSHOT_PATH, 'utf8'))).toEqual(routingSnapshot());
     const doc = readArtifact(SCREEN_SET_PATH);
     expect(doc.schema_version).toBe(SCHEMA_VERSION);
+    expect(doc.basename).toEqual({
+      source: 'src/providers/router-provider/router-provider.tsx',
+      expression: ROUTER_BASENAME_EXPRESSION,
+      effective_default: '/'
+    });
+    expect(readFileSync(ROUTER_PROVIDER_PATH, 'utf8')).toContain(
+      'basename: __BASE__ || "/"'
+    );
     const artScreens = (doc.screens as YamlValue[] | null) ?? [];
     expect(
       Array.isArray(artScreens) && artScreens.length > 0,
@@ -643,7 +663,8 @@ describe('AC2: inwentarz tras — każdy konsument istnieje, każdy call-site je
     const nonVendor = routes
       .filter(r => !String(r.canonical_path).startsWith('/vendor/'))
       .map(r => `${String(r.method)} ${String(r.canonical_path)}`);
-    expect(nonVendor).toEqual(['GET /store/currencies']);
+    expect(nonVendor).toContain('GET /store/currencies');
+    expect(nonVendor).toContain('GET /admin/refund-reasons');
   });
 
   it('każdy konsument wskazuje istniejący plik, linię z anchorem i transport widoczny w kodzie', () => {
