@@ -196,7 +196,7 @@ type RedeemState =
        * znikają z ekranu razem z kartą lookupu i kosmetolożka dostaje sam
        * identyfikator zdarzenia audytowego.
        */
-      voucher: VendorVoucherView
+      voucher: VendorVoucherView; persistedStatus: string | null // Story 5.4 (AD-34): stan odczytany z serwera po akcie; null = z koperty
     }
   | { kind: "error"; messageKey: RedeemErrorKey }
 
@@ -479,7 +479,24 @@ export const VoucherRedeem = () => {
           idempotent: Boolean(data.idempotent),
           envelope: data.envelope as RedeemEnvelope,
           voucher: lookup.voucher,
+          persistedStatus: null,
         })
+        // Stan terminalny ma być WIDOCZNY Z PANELU jako fakt zapisany w bazie:
+        // ten sam odczyt, którym kosmetolożka sprawdza kod, po akcie.
+        try {
+          const reread = await voucherFetch(
+            `/vendor/vouchers/${encodeURIComponent(lookup.voucher.code)}/lookup`,
+            { method: "GET", sellerId },
+          )
+          const status = (reread?.voucher as VendorVoucherView | undefined)?.status
+          if (typeof status === "string") {
+            setRedeem((prev) =>
+              prev.kind === "done" ? { ...prev, persistedStatus: status } : prev,
+            )
+          }
+        } catch {
+          // Odczyt potwierdzający jest uzupełnieniem — akt już się udał.
+        }
       } else {
         setRedeem({
           kind: "error",
@@ -756,6 +773,11 @@ export const VoucherRedeem = () => {
                 ? t("voucher.redeem.outcome_replayed")
                 : t("voucher.redeem.redeemed_now")}
             </div>
+            <p data-testid="voucher-confirmation-terminal-state">
+              {`${t("voucher.redeem.status")}: ${statusLabel(
+                redeem.persistedStatus ?? redeem.envelope.new_status,
+              )}`}
+            </p>
             <p data-testid="voucher-confirmation-what">
               {t("voucher.redeem.confirmation_what", {
                 product: redeem.voucher.product_title,

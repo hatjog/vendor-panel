@@ -716,8 +716,11 @@ describe("5.8 / AC6+AC7 — klucz idempotencji klienta i powód odmowy", () => {
     fetchQuery
       .mockResolvedValueOnce({ voucher: voucherView("idle") })
       .mockResolvedValueOnce({ idempotent: false, outcome: "redeemed_now", envelope: ENVELOPE_58 })
+      // v1.16.0 Story 5.4: po realizacji panel czyta voucher ponownie (stan terminalny).
+      .mockResolvedValueOnce({ voucher: voucherView("claimed") })
       .mockResolvedValueOnce({ voucher: voucherView("idle") })
       .mockResolvedValueOnce({ idempotent: false, outcome: "redeemed_now", envelope: ENVELOPE_58 })
+      .mockResolvedValueOnce({ voucher: voucherView("claimed") })
     renderScreen()
     await lookUp(user)
     await user.click(
@@ -732,7 +735,9 @@ describe("5.8 / AC6+AC7 — klucz idempotencji klienta i powód odmowy", () => {
     )
     await screen.findByTestId("voucher-redeem-confirmation")
 
-    expect(headerOf(fetchQuery.mock.calls[3])).not.toBe(
+    // Indeksy: 0 lookup, 1 redeem, 2 odczyt potwierdzający, 3 lookup, 4 redeem.
+    expect(headerOf(fetchQuery.mock.calls[4])).toBeTruthy()
+    expect(headerOf(fetchQuery.mock.calls[4])).not.toBe(
       headerOf(fetchQuery.mock.calls[1]),
     )
   })
