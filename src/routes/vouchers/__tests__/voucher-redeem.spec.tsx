@@ -796,6 +796,130 @@ describe("5.8 / AC6+AC7 — klucz idempotencji klienta i powód odmowy", () => {
 })
 
 /**
+ * v1.16.0 Story 5.5 — odmowa ponownej realizacji czytelna dla sprzedawczyni
+ * (FR-19, AD-34; ADR-219 §4 człon 3, DW-15-210; ADR-243 `Proposed`).
+ */
+describe("v1.16.0 5.5 — odmowa z powodem, faktem realizacji i bezpiecznym wariantem domyślnym", () => {
+  async function refuseWith(error: VoucherApiError) {
+    const user = userEvent.setup()
+    fetchQuery
+      .mockResolvedValueOnce({ voucher: voucherView("idle") })
+      .mockRejectedValueOnce(error)
+    const view = renderScreen()
+    await lookUp(user)
+    await user.click(
+      await screen.findByRole("button", { name: "Oznacz jako zrealizowany" }),
+    )
+    const refusal = await screen.findByTestId("voucher-redeem-refusal")
+    return { refusal, container: view.container }
+  }
+
+  it("AC1 — already_redeemed z faktem: zdanie mówi KIEDY i PRZEZ KOGO", async () => {
+    const at = "2026-05-24T10:00:00.000Z"
+    const { refusal, container } = await refuseWith(
+      new VoucherApiError(409, "VOUCHER_ALREADY_REDEEMED", "already_redeemed", "server text", {
+        redeemed_at: at,
+        redeemed_by: "own_seller",
+      }),
+    )
+    const when = new Intl.DateTimeFormat(i18n.language, {
+      dateStyle: "long",
+      timeStyle: "short",
+    }).format(new Date(at))
+    expect(refusal.textContent).toBe(
+      `Ten voucher został już zrealizowany ${when} przez Twój salon. Nie realizujemy go drugi raz.`,
+    )
+    expect(refusal.getAttribute("role")).toBe("alert")
+    expect(document.body.textContent).not.toContain("server text")
+    assertNoRawKeysNorMissingSentinel(container)
+  })
+
+  it("AC1 — realizujący nieznany panelowi: zdanie z czasem, bez zmyślonego „przez kogo”", async () => {
+    const at = "2026-05-24T10:00:00.000Z"
+    const { refusal } = await refuseWith(
+      new VoucherApiError(409, "VOUCHER_ALREADY_REDEEMED", "already_redeemed", "x", {
+        redeemed_at: at,
+        redeemed_by: "someone_new",
+      }),
+    )
+    expect(refusal.textContent).toMatch(/^Ten voucher został już zrealizowany .+\. Nie realizujemy go drugi raz\.$/)
+    expect(refusal.textContent).not.toContain("przez")
+  })
+
+  it("AC3 — prezent przed aktywacją (`not_yet_active`) ma własne polskie zdanie", async () => {
+    const { refusal, container } = await refuseWith(
+      new VoucherApiError(422, "REDEMPTION_REFUSED", "not_yet_active", "ent_123 ISSUED"),
+    )
+    expect(refusal.textContent).toBe(
+      "Ten voucher nie jest jeszcze aktywny — prezent nie został aktywowany, więc nie można go zrealizować. Poproś klientkę o aktywację prezentu.",
+    )
+    expect(document.body.textContent).not.toContain("ent_123")
+    expect(screen.queryByTestId("voucher-redeem-action")).toBeNull()
+    assertNoRawKeysNorMissingSentinel(container)
+  })
+
+  it("AC2 — `reason` spoza zbioru kluczy ⇒ bezpieczny wariant domyślny, ekran niepusty", async () => {
+    const { refusal, container } = await refuseWith(
+      new VoucherApiError(409, "VOUCHER_SOMETHING_NEW", "brand_new_reason", "raw"),
+    )
+    expect(refusal.textContent).toBe(
+      "Nie można zrealizować tego vouchera. Nie wykonuj zabiegu — sprawdź kod ponownie albo zgłoś to wsparciu, podając kod vouchera.",
+    )
+    expect(container.textContent?.trim().length).toBeGreaterThan(0)
+    expect(document.body.textContent).not.toContain("brand_new_reason")
+    expect(document.body.textContent).not.toContain("Spróbuj ponownie za chwilę")
+    assertNoRawKeysNorMissingSentinel(container)
+  })
+
+  describe("AC2 — usunięty klucz tłumaczenia (we WSZYSTKICH językach)", () => {
+    const REMOVED = [
+      ["voucher", "redeem", "refused", "already_redeemed"],
+      ["voucher", "redeem", "refused", "not_yet_active"],
+      ["voucher", "redeem", "refused", "unknown"],
+    ]
+    let saved: Record<string, unknown>
+
+    beforeEach(() => {
+      saved = {}
+      for (const lng of Object.keys(i18n.store.data)) {
+        const bundle = i18n.getResourceBundle(lng, "translation")
+        if (!bundle) continue
+        saved[lng] = bundle
+        const clone = JSON.parse(JSON.stringify(bundle))
+        for (const pathParts of REMOVED) {
+          let node = clone
+          for (const part of pathParts.slice(0, -1)) node = node?.[part]
+          if (node) delete node[pathParts[pathParts.length - 1]]
+        }
+        i18n.removeResourceBundle(lng, "translation")
+        i18n.addResourceBundle(lng, "translation", clone, false, true)
+      }
+    })
+
+    afterEach(() => {
+      for (const [lng, bundle] of Object.entries(saved)) {
+        i18n.removeResourceBundle(lng, "translation")
+        i18n.addResourceBundle(lng, "translation", bundle, false, true)
+      }
+    })
+
+    it.each([
+      ["already_redeemed", 409, "Ten voucher został już zrealizowany wcześniej. Nie realizujemy go drugi raz."],
+      ["not_yet_active", 422, "Ten voucher nie jest jeszcze aktywny, więc nie można go zrealizować."],
+      ["brand_new_reason", 409, "Nie można zrealizować tego vouchera. Nie wykonuj zabiegu — sprawdź kod ponownie albo zgłoś to wsparciu, podając kod vouchera."],
+    ])("`%s` bez klucza ⇒ zdanie domyślne z kodu, nie surowy klucz ani sentynel", async (reason, status, sentence) => {
+      expect(i18n.exists(`voucher.redeem.refused.${reason === "brand_new_reason" ? "unknown" : reason}`)).toBe(false)
+      const { refusal, container } = await refuseWith(
+        new VoucherApiError(status as number, "X", reason as string, "raw"),
+      )
+      expect(refusal.textContent).toBe(sentence)
+      expect(container.textContent).not.toMatch(/__MISSING__/)
+      expect(container.textContent).not.toMatch(/voucher\.redeem\.refused\./)
+    })
+  })
+})
+
+/**
  * review-fix cyklu 1 — findings HIGH (nośnik tożsamości) i MEDIUM (AD-17
  * w panelu). Obie asercje PĘKAJĄ po cofnięciu poprawki, a nie tylko po
  * usunięciu pliku.

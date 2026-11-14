@@ -64,6 +64,17 @@ export const REDEEM_REFUSAL_I18N_KEYS = {
 export type RedeemRefusalReason = keyof typeof REDEEM_REFUSAL_I18N_KEYS
 
 /**
+ * v1.16.0 Story 5.5 (AC3, ADR-243 `Proposed`): powody odmowy ze STANU
+ * UPRAWNIENIA (`REDEMPTION_REFUSED`/422) — lustro `ENTITLEMENT_STATE_REFUSALS`
+ * z backendu. Osobna oś, poza `refusal_reasons` słownika v3 (DW-15-327).
+ */
+export const ENTITLEMENT_REFUSAL_I18N_KEYS = {
+  not_yet_active: "voucher.redeem.refused.not_yet_active",
+} as const
+
+export type EntitlementRefusalReason = keyof typeof ENTITLEMENT_REFUSAL_I18N_KEYS
+
+/**
  * Unia LITERAŁÓW, nie `string`. `i18next.d.ts` panelu typuje `t()` po zbiorze
  * istniejących kluczy, więc `t(someString)` się nie kompiluje — i dobrze:
  * dzięki temu literówka w kluczu stanu jest błędem typów, a nie cichym

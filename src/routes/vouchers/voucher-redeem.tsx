@@ -75,11 +75,11 @@ import {
   voucherStatusI18nKey,
   type RedeemRefusalReason as RefusalReason,
 } from "../../i18n/voucher-state-vocabulary"
+import { newIdempotencyKey, voucherFetch } from "../../lib/client/voucher-client"
 import {
-  newIdempotencyKey,
-  VoucherApiError,
-  voucherFetch,
-} from "../../lib/client/voucher-client"
+  buildRefusalSentence, refusalFromError,
+  type PanelRefusal, type VoucherRedemptionFact,
+} from "./voucher-refusal"
 
 type VendorVoucherView = {
   code: string
@@ -151,13 +151,13 @@ const NON_REDEEMABLE_REASON: Record<string, RefusalReason | undefined> = {
   refunded: "refunded",
 }
 
-function refusalFromError(error: unknown): RefusalReason | null {
-  if (!(error instanceof VoucherApiError)) return null
-  if (error.reason && error.reason in REDEEM_REFUSAL_I18N_KEYS) {
-    return error.reason as RefusalReason
-  }
-  return null
-}
+/*
+ * v1.16.0 Story 5.5: rozpoznanie odmowy (`refusalFromError`) i zdanie
+ * odmowy (`buildRefusalSentence`) żyją w `./voucher-refusal` — trzy osie
+ * powodu (stan vouchera, stan uprawnienia, powód nieznany panelowi) oraz
+ * bezpieczny wariant domyślny niezależny od i18n (AC2). Blok ma tyle linii,
+ * ile miała funkcja sprzed 5.5: inwentarz tras 5.1 kotwiczy call-site'y liniami.
+ */
 
 /**
  * Klucze komunikatów błędu jako unia LITERAŁÓW. `i18next.d.ts` panelu typuje
@@ -183,7 +183,7 @@ type RedeemState =
   | { kind: "idle" }
   | { kind: "loading" }
   /** Odmowa z ROZRÓŻNIALNYM powodem (UX-DR9) — osobny stan, nie błąd sieci. */
-  | { kind: "refused"; reason: RefusalReason }
+  | { kind: "refused"; refusal: PanelRefusal; redemption: VoucherRedemptionFact | null } // 5.5 AC1
   | {
       kind: "done"
       outcome: RedeemOutcome
@@ -507,9 +507,9 @@ export const VoucherRedeem = () => {
       // Odmowa z rozróżnialnym powodem (UX-DR9) NIE jest błędem sieci
       // i nie wolno jej zwinąć do „spróbuj ponownie za chwilę": ponowienie
       // realizacji vouchera wycofanego nigdy się nie uda.
-      const reason = refusalFromError(err)
-      if (reason) {
-        setRedeem({ kind: "refused", reason })
+      const refused = refusalFromError(err)
+      if (refused) {
+        setRedeem({ kind: "refused", ...refused })
         return
       }
       setRedeem({
@@ -701,7 +701,12 @@ export const VoucherRedeem = () => {
               data-testid="voucher-redeem-refusal"
               className="text-sm text-red-700"
             >
-              {t(REDEEM_REFUSAL_I18N_KEYS[redeem.reason])}
+              {buildRefusalSentence(
+                t as unknown as (key: string, options?: Record<string, unknown>) => unknown,
+                (iso) => formatWhen(iso, i18n.language),
+                redeem.refusal,
+                redeem.redemption,
+              )}
             </p>
           )}
         </div>

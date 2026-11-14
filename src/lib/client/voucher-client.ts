@@ -38,24 +38,47 @@ function resolvePublishableApiKey(): string {
   return typeof __PUBLISHABLE_API_KEY__ === "string" ? __PUBLISHABLE_API_KEY__ : ""
 }
 
+/**
+ * Fakt realizacji z odmowy `already_redeemed` (v1.16.0 Story 5.5, AC1):
+ * KIEDY (`redeemed_at`, ISO albo `null`, gdy serwer nie zna czasu) i PRZEZ
+ * KOGO (`redeemed_by` — dziś wyłącznie `own_seller`, czyli salon zalogowanej
+ * sprzedawczyni; wartość nieznana panelowi daje zdanie bez członu „przez kogo”).
+ */
+export type VoucherRedemptionFact = {
+  redeemed_at: string | null
+  redeemed_by: string | null
+}
+
+function readRedemptionFact(value: unknown): VoucherRedemptionFact | null {
+  if (!value || typeof value !== "object") return null
+  const v = value as Record<string, unknown>
+  return {
+    redeemed_at: typeof v.redeemed_at === "string" ? v.redeemed_at : null,
+    redeemed_by: typeof v.redeemed_by === "string" ? v.redeemed_by : null,
+  }
+}
+
 /** Błąd HTTP niosący MASZYNOWY powód odmowy, nie tylko tekst. */
 export class VoucherApiError extends Error {
   readonly status: number
   readonly code: string | null
-  /** `already_redeemed` | `withdrawn` | `expired` | `not_redeemable` | null */
+  /** `already_redeemed` | `withdrawn` | `expired` | `not_redeemable` | `not_yet_active` | null */
   readonly reason: string | null
+  readonly redemption: VoucherRedemptionFact | null
 
   constructor(
     status: number,
     code: string | null,
     reason: string | null,
-    message: string
+    message: string,
+    redemption: VoucherRedemptionFact | null = null
   ) {
     super(message)
     this.name = "VoucherApiError"
     this.status = status
     this.code = code
     this.reason = reason
+    this.redemption = redemption
   }
 }
 
@@ -134,7 +157,8 @@ export async function voucherFetch(
       response.status,
       typeof body.code === "string" ? body.code : null,
       typeof body.reason === "string" ? body.reason : null,
-      typeof body.message === "string" ? body.message : `HTTP ${response.status}`
+      typeof body.message === "string" ? body.message : `HTTP ${response.status}`,
+      readRedemptionFact(body.redemption)
     )
   }
 

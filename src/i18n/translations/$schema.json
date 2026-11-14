@@ -127,6 +127,21 @@
                 },
                 "not_redeemable": {
                   "type": "string"
+                },
+                "not_yet_active": {
+                  "type": "string"
+                },
+                "already_redeemed_detail": {
+                  "type": "string"
+                },
+                "already_redeemed_when": {
+                  "type": "string"
+                },
+                "redeemed_by_own_seller": {
+                  "type": "string"
+                },
+                "unknown": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -134,7 +149,12 @@
                 "withdrawn",
                 "expired",
                 "refunded",
-                "not_redeemable"
+                "not_redeemable",
+                "not_yet_active",
+                "already_redeemed_detail",
+                "already_redeemed_when",
+                "redeemed_by_own_seller",
+                "unknown"
               ],
               "additionalProperties": false
             },
