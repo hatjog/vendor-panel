@@ -38,10 +38,16 @@ function resolvePublishableApiKey(): string {
   return typeof __PUBLISHABLE_API_KEY__ === "string" ? __PUBLISHABLE_API_KEY__ : ""
 }
 
-/** Błąd HTTP niosący MASZYNOWY powód odmowy, nie tylko tekst. */
-export class VoucherApiError extends Error {
-  readonly status: number
-  readonly code: string | null
+/**
+ * Błąd HTTP niosący MASZYNOWY powód odmowy, nie tylko tekst.
+ *
+ * v1.16.0 Story 5.2 (AC2): dziedziczy po {@link PanelResponseError}, więc niesie
+ * tę samą taksonomię klas co `fetchQuery` (`route_missing` | `forbidden` |
+ * `backend_failure` | `bad_format` | `request_rejected`). Klasa wynika ze
+ * statusu; jedynym wyjątkiem jest `bad_format` (2xx z ciałem nie-JSON), które
+ * wywołujący podaje jawnie. Kontrakt backendu (`code`, `reason`) bez zmian.
+ */
+export class VoucherApiError extends PanelResponseError {
   /** `already_redeemed` | `withdrawn` | `expired` | `not_redeemable` | null */
   readonly reason: string | null
 
@@ -49,12 +55,11 @@ export class VoucherApiError extends Error {
     status: number,
     code: string | null,
     reason: string | null,
-    message: string
+    message: string,
+    responseClass: ResponseClass = classifyHttpStatus(status)
   ) {
-    super(message)
+    super({ status, responseClass, message, code })
     this.name = "VoucherApiError"
-    this.status = status
-    this.code = code
     this.reason = reason
   }
 }
@@ -93,6 +98,12 @@ function readAuthToken(): string {
 // NIE wprowadza identyfikatora do zasiegu modulu — a `voucherFetch` go uzywa,
 // wiec konczylo sie to `ReferenceError` PRZED wyjsciem w siec: zadanie nie
 // wychodzilo wcale, a ekran pokazywal generyczne "Could not look up the voucher".
+import {
+  NETWORK_FAILURE_STATUS,
+  PanelResponseError,
+  classifyHttpStatus,
+  type ResponseClass,
+} from "./response-class"
 import { SELLER_ID_HEADER } from "./seller-context"
 
 export { SELLER_ID_HEADER }
@@ -106,20 +117,32 @@ export async function voucherFetch(
     headers?: Record<string, string>
   }
 ): Promise<Record<string, unknown>> {
-  const response = await fetch(`${resolveBackendUrl()}${path}`, {
-    method: init.method,
-    // Sesja sprzedawcy Mercura zostaje jako DRUGI, zapasowy nośnik (gdyby
-    // panel kiedyś zaczął wołać `/vendor/sellers/select`), ale nie jest już
-    // jedynym — patrz komentarz przy `SELLER_ID_HEADER`.
-    credentials: "include",
-    headers: {
-      authorization: `Bearer ${readAuthToken()}`,
-      "Content-Type": "application/json",
-      "x-publishable-api-key": resolvePublishableApiKey(),
-      [SELLER_ID_HEADER]: init.sellerId,
-      ...(init.headers ?? {}),
-    },
-  })
+  let response: Response
+  try {
+    response = await fetch(`${resolveBackendUrl()}${path}`, {
+      method: init.method,
+      // Sesja sprzedawcy Mercura zostaje jako DRUGI, zapasowy nośnik (gdyby
+      // panel kiedyś zaczął wołać `/vendor/sellers/select`), ale nie jest już
+      // jedynym — patrz komentarz przy `SELLER_ID_HEADER`.
+      credentials: "include",
+      headers: {
+        authorization: `Bearer ${readAuthToken()}`,
+        "Content-Type": "application/json",
+        "x-publishable-api-key": resolvePublishableApiKey(),
+        [SELLER_ID_HEADER]: init.sellerId,
+        ...(init.headers ?? {}),
+      },
+    })
+  } catch (cause) {
+    // Brak odpowiedzi (DNS, odmowa połączenia, CORS) to awaria backendu,
+    // nie „nieznany błąd” — status 0 mówi wprost, że odpowiedzi nie było.
+    throw new VoucherApiError(
+      NETWORK_FAILURE_STATUS,
+      null,
+      null,
+      `backend nieosiagalny: ${cause instanceof Error ? cause.message : String(cause)}`
+    )
+  }
 
   if (!response.ok) {
     // Ciało odmowy bywa puste (np. 502 z proxy) — brak JSON-a nie może
@@ -138,7 +161,35 @@ export async function voucherFetch(
     )
   }
 
-  return (await response.json()) as Record<string, unknown>
+  // v1.16.0 Story 5.2 (AC2): 2xx z ciałem nie-JSON (np. `index.html` panelu
+  // przy złym `__BACKEND_URL__`) to `bad_format`, nie `SyntaxError` parsera.
+  const contentType = readContentType(response)
+  if (contentType && !/json/i.test(contentType)) {
+    throw badFormat(response.status, contentType)
+  }
+  try {
+    return (await response.json()) as Record<string, unknown>
+  } catch {
+    throw badFormat(response.status, contentType)
+  }
+}
+
+function readContentType(response: Response): string | null {
+  try {
+    return response.headers?.get("content-type") ?? null
+  } catch {
+    return null
+  }
+}
+
+function badFormat(status: number, contentType: string | null): VoucherApiError {
+  return new VoucherApiError(
+    status,
+    null,
+    null,
+    `${status}: odpowiedz backendu nie jest JSON-em${contentType ? ` (${contentType})` : ""}`,
+    "bad_format"
+  )
 }
 
 /**

@@ -2911,5 +2911,18 @@
     "minutes_other": "Protokół",
     "seconds_one": "Drugi",
     "seconds_other": "Towary drugiej jakości"
+  },
+  "responseError": {
+    "routeMissingTitle": "Trasa niedostępna",
+    "routeMissingMessage": "Backend nie ma trasy dla tego ekranu (HTTP 404). To nie jest pusta lista — danych nie dało się pobrać.",
+    "forbiddenTitle": "Odmowa dostępu",
+    "forbiddenMessage": "Backend odmówił tego żądania dla Twojego konta lub salonu. Zaloguj się ponownie albo poproś właściciela salonu o dostęp.",
+    "backendFailureTitle": "Awaria backendu",
+    "backendFailureMessage": "Backend uległ awarii albo jest nieosiągalny. Spróbuj ponownie za chwilę; jeśli błąd się powtarza, zgłoś poniższy status.",
+    "badFormatTitle": "Nieoczekiwany format odpowiedzi",
+    "badFormatMessage": "Backend odpowiedział czymś, co nie jest JSON-em — zwykle panel wskazuje zły adres backendu.",
+    "requestRejectedTitle": "Żądanie odrzucone",
+    "requestRejectedMessage": "Backend odrzucił żądanie jako nieprawidłowe.",
+    "statusLabel": "Status HTTP: {{status}}"
   }
 }

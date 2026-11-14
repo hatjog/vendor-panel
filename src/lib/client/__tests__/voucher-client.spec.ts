@@ -13,6 +13,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { PanelResponseError } from "../response-class"
 import { SELLER_ID_HEADER, VoucherApiError, voucherFetch } from "../voucher-client"
 
 const fetchMock = vi.fn()
@@ -110,5 +111,88 @@ describe("voucherFetch — nośnik tożsamości salonu", () => {
     expect(error).toBeInstanceOf(VoucherApiError)
     expect(error.status).toBe(502)
     expect(error.reason).toBeNull()
+  })
+})
+
+/**
+ * v1.16.0 Story 5.2 (AC2): `VoucherApiError` niesie TĘ SAMĄ taksonomię klas
+ * co `fetchQuery`. Kontrakt backendu (`code`, `reason`) się nie zmienia.
+ */
+function htmlResponse(status: number) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: (n: string) => (n.toLowerCase() === "content-type" ? "text/html" : null) },
+    json: async () => JSON.parse("<!doctype html>"),
+  }
+}
+
+async function voucherError(response: unknown) {
+  fetchMock.mockResolvedValueOnce(response)
+  const error = await voucherFetch("/vendor/vouchers/GP-1/lookup", {
+    method: "GET",
+    sellerId: "sel_01ABC",
+  }).then(
+    (value) => {
+      throw new Error(`oczekiwano odrzucenia: ${JSON.stringify(value)}`)
+    },
+    (e) => e
+  )
+  expect(error).toBeInstanceOf(VoucherApiError)
+  expect(error).toBeInstanceOf(PanelResponseError)
+  return error as VoucherApiError
+}
+
+describe("voucherFetch — klasy odpowiedzi (5.2 AC2)", () => {
+  it("404 HTML: status 404, klasa route_missing", async () => {
+    const error = await voucherError(htmlResponse(404))
+    expect(error.status).toBe(404)
+    expect(error.responseClass).toBe("route_missing")
+  })
+
+  it("403 JSON: status 403, klasa forbidden, kod zachowany", async () => {
+    const error = await voucherError(
+      errorResponse(403, { code: "NOT_A_MEMBER", message: "odmowa" })
+    )
+    expect(error.status).toBe(403)
+    expect(error.responseClass).toBe("forbidden")
+    expect(error.code).toBe("NOT_A_MEMBER")
+  })
+
+  it("500 JSON: status 500, klasa backend_failure", async () => {
+    const error = await voucherError(errorResponse(500, { message: "boom" }))
+    expect(error.status).toBe(500)
+    expect(error.responseClass).toBe("backend_failure")
+  })
+
+  it("502 HTML: status 502, klasa backend_failure", async () => {
+    const error = await voucherError(htmlResponse(502))
+    expect(error.status).toBe(502)
+    expect(error.responseClass).toBe("backend_failure")
+  })
+
+  it("200 text/html na ścieżce sukcesu: status 200, klasa bad_format", async () => {
+    const error = await voucherError(htmlResponse(200))
+    expect(error.status).toBe(200)
+    expect(error.responseClass).toBe("bad_format")
+  })
+
+  it("409 z powodem odmowy: klasa request_rejected, reason bez zmian", async () => {
+    const error = await voucherError(
+      errorResponse(409, { code: "VOUCHER_WITHDRAWN", reason: "withdrawn" })
+    )
+    expect(error.responseClass).toBe("request_rejected")
+    expect(error.reason).toBe("withdrawn")
+  })
+
+  it("odrzucony fetch: status 0, klasa backend_failure", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"))
+    const error = await voucherFetch("/vendor/vouchers/GP-1/lookup", {
+      method: "GET",
+      sellerId: "sel_01ABC",
+    }).catch((e) => e)
+    expect(error).toBeInstanceOf(VoucherApiError)
+    expect(error.status).toBe(0)
+    expect(error.responseClass).toBe("backend_failure")
   })
 })

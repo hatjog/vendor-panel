@@ -1,5 +1,5 @@
 import Medusa from '@medusajs/js-sdk';
-
+import { PanelResponseError, errorFromResponse, networkFailure, readJsonSuccess } from './response-class';
 import { SELLER_ID_HEADER, getStoredSellerId } from './seller-context';
 
 export const backendUrl = __BACKEND_URL__ ?? '/';
@@ -61,8 +61,8 @@ export const importProductsQuery = async (file: File) => {
       'x-publishable-api-key': publishableApiKey
     }
   })
-    .then(res => res.json())
-    .catch(() => null);
+    // v1.16.0 Story 5.2 (AC2): klasyfikowany blad zamiast `.catch(() => null)`.
+    .then(readClassified, rejectAsNetworkFailure);
 };
 
 export const uploadFilesQuery = async (files: any[]) => {
@@ -82,9 +82,36 @@ export const uploadFilesQuery = async (files: any[]) => {
       'x-publishable-api-key': publishableApiKey
     }
   })
-    .then(res => res.json())
-    .catch(() => null);
+    // v1.16.0 Story 5.2 (AC2): klasyfikowany blad zamiast `.catch(() => null)`.
+    .then(readClassified, rejectAsNetworkFailure);
 };
+
+/**
+ * v1.16.0 Story 5.2 (AC2): upload/import ended with `.catch(() => null)` —
+ * a 404 HTML page, a refusal and a backend crash all became `null`, which the
+ * callers destructure (`const { files } = ...`) into a TypeError far from the
+ * cause. Both now share the classified path of `fetchQuery`. These helpers sit
+ * below their callers on purpose: the route inventory of Story 5.1 anchors the
+ * `fetch` literals above by line (DW-15-294 regenerates it at close-out).
+ */
+const readClassified = async (response: Response) => {
+  if (!response.ok) {
+    throw await errorFromResponse(response);
+  }
+  return readJsonSuccess(response);
+};
+
+const rejectAsNetworkFailure = (cause: unknown): never => {
+  throw networkFailure(cause);
+};
+
+export {
+  PanelResponseError,
+  isPanelResponseError,
+  responseClassOf,
+  type ResponseClass
+} from './response-class';
+
 
 export const fetchQuery = async (
   url: string,
@@ -137,6 +164,8 @@ export const fetchQuery = async (
       ...headers
     },
     body: body ? JSON.stringify(body) : null
+  }).catch(cause => {
+    throw networkFailure(cause);
   });
 
   if (!response.ok) {
@@ -146,14 +175,9 @@ export const fetchQuery = async (
     // obsluge statusow nizej i lecial do React Error Boundary. Skutek zmierzony:
     // jedna nieistniejaca trasa (`/vendor/me`) wywracala KAZDY ekran panelu
     // komunikatem "An unexpected error occurred while rendering this page".
-    let errorData: { message?: string } = {};
-    try {
-      errorData = await response.json();
-    } catch {
-      errorData = {
-        message: `${response.status} ${response.statusText} (odpowiedz nie jest JSON-em)`
-      };
-    }
+    // v1.16.0 Story 5.2 (AC2): blad niesie `status` ORAZ klase odpowiedzi
+    // (`route_missing` | `forbidden` | `backend_failure` | `request_rejected`).
+    const error = await errorFromResponse(response);
 
     if (response.status === 401) {
       if (isTokenExpired(bearer)) {
@@ -162,16 +186,22 @@ export const fetchQuery = async (
         return;
       }
 
-      throw {
-        type: 'NO_PERMISSION',
-        message: errorData.message || 'Unauthorized'
-      };
+      // Przed 5.2 rzucany byl goly obiekt `{ type: 'NO_PERMISSION' }` BEZ
+      // `status` — odmowa byla nieodroznialna od kazdego innego bledu.
+      throw new PanelResponseError({
+        status: 401,
+        statusText: error.statusText,
+        responseClass: 'forbidden',
+        message: error.message || 'Unauthorized',
+        code: 'NO_PERMISSION'
+      });
     }
 
-    const error = new Error(errorData.message || 'Server error');
-    (error as Error & { status: number }).status = response.status;
     throw error;
   }
 
-  return response.json();
+  // v1.16.0 Story 5.2 (AC2): sciezka SUKCESU tez odrzuca nie-JSON. `200`
+  // z `text/html` (np. `index.html` panelu, gdy `__BACKEND_URL__` wskazuje
+  // zly host w LAN) dawal `SyntaxError` parsera; teraz `bad_format` ze statusem.
+  return readJsonSuccess(response);
 };

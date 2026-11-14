@@ -1,6 +1,10 @@
 import { clx } from "@medusajs/ui"
 import { memo } from "react"
 import { NoRecords, NoResultsProps } from "../../common/empty-table-content"
+import {
+  ResponseErrorState,
+  hasResponseClass,
+} from "../../common/response-error-state"
 import { TableSkeleton } from "../../common/skeleton"
 import { DataTableQuery, DataTableQueryProps } from "./data-table-query"
 import { DataTableRoot, DataTableRootProps } from "./data-table-root"
@@ -17,6 +21,12 @@ interface DataTableProps<TData>
       label: string
     }
   }
+  /**
+   * v1.16.0 Story 5.2 (AC2): blad zapytania listy. Gdy niesie klase odpowiedzi,
+   * tabela pokazuje rozroznialny komunikat ZAMIAST empty-state — `count === 0`
+   * po bledzie nie jest "brakiem rekordow".
+   */
+  error?: unknown
 }
 
 // Maybe we should use the memoized version of DataTableRoot
@@ -43,7 +53,12 @@ export const _DataTable = <TData,>({
   noHeader = false,
   layout = "fit",
   noRecords: noRecordsProps = {},
+  error,
 }: DataTableProps<TData>) => {
+  if (error && hasResponseClass(error)) {
+    return <ResponseErrorState error={error} />
+  }
+
   if (isLoading) {
     return (
       <TableSkeleton
