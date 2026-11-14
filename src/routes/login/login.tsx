@@ -22,7 +22,13 @@ export const Login = () => {
   const [searchParams] = useSearchParams()
 
   const reason = searchParams.get("reason") || ""
-  const reasonMessage = reason && reason.toLowerCase() === "unauthorized" ? "Session expired" : reason
+  // v1.16.0 Story 5.2 (R-12): a refused seller context has its own localized reason.
+  const reasonMessage =
+    reason === "seller_context"
+      ? t("responseError.sellerContextReason")
+      : reason && reason.toLowerCase() === "unauthorized"
+        ? "Session expired"
+        : reason
 
   const { getWidgets } = useDashboardExtension()
 

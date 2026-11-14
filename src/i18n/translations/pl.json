@@ -2923,6 +2923,9 @@
     "badFormatMessage": "Backend odpowiedział czymś, co nie jest JSON-em — zwykle panel wskazuje zły adres backendu.",
     "requestRejectedTitle": "Żądanie odrzucone",
     "requestRejectedMessage": "Backend odrzucił żądanie jako nieprawidłowe.",
-    "statusLabel": "Status HTTP: {{status}}"
+    "statusLabel": "Status HTTP: {{status}}",
+    "retryAction": "Ponów",
+    "reloginAction": "Wyloguj i zaloguj ponownie",
+    "sellerContextReason": "Kontekst salonu jest nieaktualny albo nie należysz już do tego salonu. Zaloguj się ponownie."
   }
 }

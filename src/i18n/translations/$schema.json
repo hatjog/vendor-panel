@@ -37,6 +37,15 @@
         },
         "statusLabel": {
           "type": "string"
+        },
+        "retryAction": {
+          "type": "string"
+        },
+        "reloginAction": {
+          "type": "string"
+        },
+        "sellerContextReason": {
+          "type": "string"
         }
       },
       "required": [
@@ -50,7 +59,10 @@
         "badFormatMessage",
         "requestRejectedTitle",
         "requestRejectedMessage",
-        "statusLabel"
+        "statusLabel",
+        "retryAction",
+        "reloginAction",
+        "sellerContextReason"
       ],
       "additionalProperties": false
     },
