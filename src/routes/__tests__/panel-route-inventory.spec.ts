@@ -364,6 +364,10 @@ function quote(s: string): string {
     /^[\s\-?:,[\]{}#&*!|>'"%@`]/.test(s) ||
     /[:#]\s|\s$/.test(s) ||
     /^(true|false|null|~|-?\d+)$/.test(s) ||
+    // PyYAML (safe_load) resolves unquoted dates/timestamps to date/datetime
+    // objects; the validator would then see `YYYY-MM-DD HH:MM:SS+hh:mm` without
+    // the `T` separator and reject it as not ISO-8601.
+    /^\d{4}-\d{2}-\d{2}/.test(s) ||
     s.includes('\n');
   return needs ? `'${s.replace(/'/g, "''")}'` : s;
 }
@@ -416,6 +420,22 @@ function scalar(v: YamlValue): string {
 // ---------------------------------------------------------------------------
 // Pomocnicze
 // ---------------------------------------------------------------------------
+
+/**
+ * Full ISO-8601 timestamp with the local UTC offset (e.g. 2026-11-14T19:05:07+01:00),
+ * the format `evidence_timestamp` in validate_vendor_panel_route_inventory.py accepts.
+ * `toISOString().slice(0, 10)` emitted a date-only value the validator rejects.
+ */
+export function evidenceTimestamp(date: Date = new Date()): string {
+  const pad = (n: number) => String(Math.trunc(Math.abs(n))).padStart(2, '0');
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}` +
+    `${sign}${pad(offsetMinutes / 60)}:${pad(offsetMinutes % 60)}`
+  );
+}
 
 function gitHead(dir: string): string {
   try {
@@ -594,7 +614,7 @@ describe('AC1: wyliczony zbiór ekranów panelu z realnego RouteMap', () => {
         story: '5.1',
         source_commit: gitHead(SUPER_ROOT),
         panel_commit: gitHead(PANEL_ROOT),
-        measured_at: new Date().toISOString().slice(0, 10),
+        measured_at: evidenceTimestamp(),
         generator:
           'GP/vendor-panel/src/routes/__tests__/panel-route-inventory.spec.ts (GP_PANEL_INVENTORY_WRITE=1)',
         route_source: {
@@ -847,6 +867,35 @@ describe('AC4: nośniki konfiguracji LAN są nazwane po źródłach i wolne od p
 // ---------------------------------------------------------------------------
 // Test-the-test parsera YAML (żeby zielone parity nie było skutkiem pustego odczytu)
 // ---------------------------------------------------------------------------
+
+// Mirror of `evidence_timestamp` in _grow/tools/validate_vendor_panel_route_inventory.py:
+// full ISO-8601 with a `T` separator and an explicit UTC offset.
+const VALIDATOR_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+describe('5.1-C5-NEW-001: measured_at trybu zapisu jest akceptowany przez walidator', () => {
+  it('generator emituje pełny ISO-8601 z offsetem, nie samą datę', () => {
+    const at = new Date(2026, 10, 14, 9, 5, 7);
+    const value = evidenceTimestamp(at);
+    expect(value).toMatch(VALIDATOR_TIMESTAMP_RE);
+    expect(value.startsWith('2026-11-14T09:05:07')).toBe(true);
+    expect(new Date(value).getTime()).toBe(at.getTime());
+    // regresja: dawny generator `toISOString().slice(0, 10)`
+    expect(at.toISOString().slice(0, 10)).not.toMatch(VALIDATOR_TIMESTAMP_RE);
+  });
+
+  it('serializer cytuje timestamp, żeby PyYAML nie zamienił go na datetime bez separatora T', () => {
+    const value = evidenceTimestamp(new Date(2026, 10, 14, 9, 5, 7));
+    const dumped = dumpYamlSubset({ measured_at: value });
+    expect(dumped).toBe(`measured_at: '${value}'`);
+    expect(dumpYamlSubset({ day: '2026-11-14' })).toBe("day: '2026-11-14'");
+    expect((parseYamlSubset(dumped) as { [k: string]: YamlValue }).measured_at).toBe(value);
+  });
+
+  it('zapisany artefakt panel-screen-set.yaml ma measured_at w formacie walidatora', () => {
+    const doc = readArtifact(SCREEN_SET_PATH);
+    expect(String(doc.measured_at)).toMatch(VALIDATOR_TIMESTAMP_RE);
+  });
+});
 
 describe('parser podzbioru YAML', () => {
   it('round-trip dokumentu z listą map, pustymi listami i cudzysłowami', () => {
