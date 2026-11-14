@@ -15,7 +15,7 @@ export const ItemLocationListTable = ({
     pageSize: PAGE_SIZE,
   })
 
-  const { location_levels, count, isLoading } = useInventoryItemLevels(
+  const { location_levels, count, isLoading, error } = useInventoryItemLevels(
     inventory_item_id,
     {
       ...searchParams,
@@ -44,6 +44,7 @@ export const ItemLocationListTable = ({
       pageSize={PAGE_SIZE}
       count={filteredLocationLevels?.length}
       isLoading={isLoading}
+      error={error}
       pagination
       queryObject={raw}
     />

@@ -33,7 +33,7 @@ export const ProductVariantSection = ({
     pageSize: PAGE_SIZE,
   })
 
-  const { variants, count, isLoading } = useProductVariants(
+  const { variants, count, isLoading, error } = useProductVariants(
     product.id,
     searchParams,
     {
@@ -65,6 +65,7 @@ export const ProductVariantSection = ({
         search
         pagination
         isLoading={isLoading}
+        error={error}
         queryObject={raw}
         navigateTo={(row) => `variants/${row.original.id}`}
         orderBy={[

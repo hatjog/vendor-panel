@@ -61,7 +61,11 @@ export const AddCampaignPromotionsForm = ({
   }
 
   const { searchParams, raw } = usePromotionTableQuery({ pageSize: PAGE_SIZE })
-  const { promotions: promotionsRaw, isPending: isLoading } = usePromotions({
+  const {
+    promotions: promotionsRaw,
+    isPending: isLoading,
+    error,
+  } = usePromotions({
     ...searchParams,
     fields: "+status",
   })
@@ -132,6 +136,7 @@ export const AddCampaignPromotionsForm = ({
             columns={columns}
             pageSize={PAGE_SIZE}
             isLoading={isLoading}
+            error={error}
             filters={filters}
             orderBy={[
               { key: "code", label: t("fields.code") },

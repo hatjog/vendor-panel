@@ -3128,5 +3128,21 @@
     "minutes_other": "Minutes",
     "seconds_one": "Second",
     "seconds_other": "Seconds"
+  },
+  "responseError": {
+    "routeMissingTitle": "Route not available",
+    "routeMissingMessage": "The backend has no route for this screen (HTTP 404). This is not an empty list — the data could not be requested.",
+    "forbiddenTitle": "Access refused",
+    "forbiddenMessage": "The backend refused this request for your account or store. Sign in again or ask the store owner for access.",
+    "backendFailureTitle": "Backend failure",
+    "backendFailureMessage": "The backend failed or could not be reached. Try again in a moment; if it persists, report the status below.",
+    "badFormatTitle": "Unexpected response format",
+    "badFormatMessage": "The backend answered with something that is not JSON — usually the panel points at the wrong backend address.",
+    "requestRejectedTitle": "Request rejected",
+    "requestRejectedMessage": "The backend rejected the request as invalid.",
+    "statusLabel": "HTTP status: {{status}}",
+    "retryAction": "Retry",
+    "reloginAction": "Sign out and sign in again",
+    "sellerContextReason": "Your store context is out of date or you are no longer a member of this store. Sign in again."
   }
 }

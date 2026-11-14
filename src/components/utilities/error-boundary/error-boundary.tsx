@@ -3,7 +3,12 @@ import { Text } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 import { Navigate, useLocation, useRouteError } from "react-router-dom"
 
+import {
+  isPanelResponseError,
+  responseClassOf,
+} from "../../../lib/client/response-class"
 import { isFetchError } from "../../../lib/is-fetch-error"
+import { ResponseErrorState } from "../../common/response-error-state"
 
 export const ErrorBoundary = () => {
   const error = useRouteError()
@@ -18,6 +23,25 @@ export const ErrorBoundary = () => {
     }
 
     code = error.status ?? null
+  }
+
+  // v1.16.0 Story 5.2 (AC2): klient panelu rzuca `PanelResponseError` z KLASA
+  // odpowiedzi. 401 nadal prowadzi do logowania; kazda inna klasa dostaje
+  // wlasny komunikat zamiast generycznego "Wystapil blad".
+  if (isPanelResponseError(error) && error.status === 401) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  if (responseClassOf(error)) {
+    return (
+      <div
+        data-testid="route-error-boundary"
+        data-boundary-kind="classified"
+        className="flex size-full min-h-[calc(100vh-57px-24px)] items-center justify-center"
+      >
+        <ResponseErrorState error={error} />
+      </div>
+    )
   }
 
   /**
@@ -53,7 +77,11 @@ export const ErrorBoundary = () => {
   }
 
   return (
-    <div className="flex size-full min-h-[calc(100vh-57px-24px)] items-center justify-center">
+    <div
+      data-testid="route-error-boundary"
+      data-boundary-kind="generic"
+      className="flex size-full min-h-[calc(100vh-57px-24px)] items-center justify-center"
+    >
       <div className="flex flex-col gap-y-6">
         <div className="text-ui-fg-subtle flex flex-col items-center gap-y-3">
           <ExclamationCircle />

@@ -76,7 +76,7 @@ export const LocationEditFulfillmentProvidersForm = ({
     pageSize: PAGE_SIZE,
   })
 
-  const { fulfillment_providers, count, isLoading } = useFulfillmentProviders(
+  const { fulfillment_providers, count, isLoading, error } = useFulfillmentProviders(
     {},
     { placeholderData: keepPreviousData }
   )
@@ -133,6 +133,7 @@ export const LocationEditFulfillmentProvidersForm = ({
             columns={columns}
             pageSize={PAGE_SIZE}
             isLoading={isLoading}
+            error={error}
             count={count}
             filters={filters}
             search="autofocus"
