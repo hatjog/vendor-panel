@@ -10,6 +10,12 @@
  * - Dowodem jest MONTAŻ, nie kod HTTP: router zakończył ładowanie trasy,
  *   dopasowany liść to ekran ze zbioru (a nie przekierowanie), nie ma błędu
  *   w `router.state.errors`, a w DOM-ie nie ma granicy błędu.
+ * - Po budżecie (zegar ścienny, wyprowadzony z limitu testu z marginesem)
+ *   router MUSI być bezczynny i `queryClient.isFetching() === 0` — inaczej
+ *   wynik `not-idle` (spinner, szkielet, zapytanie bez odpowiedzi).
+ * - Treść sprawdzana w OUTLECIE (okno dialogowe trasy, `<main>` powłoki,
+ *   strona publiczna), nie w całym kontenerze: powłoka layoutu jest zawsze
+ *   w DOM-ie. Pusty outlet albo sam szkielet = `no-content`.
  * - KONTROLA UJEMNA AD-35: ekran wyrenderowany na granicy błędu
  *   (`data-testid="route-error-boundary"`) NIE zalicza — wynik
  *   `error-boundary` (generyczna) albo `distinguished-error` (z klasą).
@@ -34,7 +40,11 @@ import { act, cleanup, render } from "@testing-library/react"
 import type { i18n as I18n } from "i18next"
 import { HelmetProvider } from "react-helmet-async"
 import { I18nextProvider } from "react-i18next"
-import { RouterProvider, createMemoryRouter } from "react-router-dom"
+import {
+  RouterProvider,
+  createMemoryRouter,
+  type RouteObject,
+} from "react-router-dom"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 // `@medusajs/js-sdk` czyta `localStorage` W KONSTRUKTORZE (module scope
@@ -82,8 +92,25 @@ const SCREEN_SET_PATH = path.join(EVIDENCE, "5-1/panel-screen-set.yaml")
 const MOUNT_EVIDENCE_PATH = path.join(EVIDENCE, "5-2/panel-screen-mount.yaml")
 const WRITE_MODE = process.env.GP_PANEL_MOUNT_WRITE === "1"
 
+/** Per-screen test limit; the idle budget is derived from it with a margin. */
+const SCREEN_TEST_TIMEOUT_MS = 20000
+const IDLE_BUDGET_MS = SCREEN_TEST_TIMEOUT_MS - 6000
+const PRELOAD_TIMEOUT_MS = 180000
+
 type Screen = { screen_id: string; route_pattern: string; access: string }
-type Outcome = "mounted" | "error-boundary" | "distinguished-error"
+/**
+ * `not-idle`   — po budżecie router albo zapytania nadal pracują (spinner,
+ *                szkielet, zapytanie bez odpowiedzi): NIE jest montażem.
+ * `no-content` — router i zapytania bezczynne, ale OUTLET (obszar ekranu:
+ *                okno dialogowe trasy, `<main>` powłoki albo strona publiczna)
+ *                nie ma nagłówka ani tabeli ekranu: NIE jest montażem.
+ */
+type Outcome =
+  | "mounted"
+  | "error-boundary"
+  | "distinguished-error"
+  | "not-idle"
+  | "no-content"
 type Result = { screen_id: string; path: string; outcome: Outcome; detail: string }
 
 /** Minimal reader of the block list the 5.1 generator emits. */
@@ -236,7 +263,10 @@ function singular(resource: string): string {
 
 function bodyFor(url: URL): unknown {
   const parts = url.pathname.split("/").filter(Boolean)
-  if (url.pathname.startsWith("/vendor/sellers/me")) return { seller: SELLER }
+  // Exact match: `/vendor/sellers/me/<sub>` (reviews, onboarding, …) is a
+  // resource of its own and falls through to the list/detail shape below —
+  // answering it with `{ seller }` left `useReviews().reviews` undefined.
+  if (url.pathname === "/vendor/sellers/me") return { seller: SELLER }
   if (url.pathname.startsWith("/vendor/stores")) return { stores: [entity("store")], count: 1, offset: 0, limit: 20 }
   if (url.pathname === "/vendor/sellers") return { sellers: [SELLER], count: 1, offset: 0, limit: 20 }
   // `/vendor/<resource>` → list; `/vendor/<resource>/<id>` → detail;
@@ -252,6 +282,8 @@ function bodyFor(url: URL): unknown {
 }
 
 const requests: string[] = []
+/** Negative control: paths whose request never gets a response. */
+const neverAnswered = new Set<string>()
 /** Negative control: paths answered with a `404` HTML page instead of data. */
 const htmlNotFound = new Set<string>()
 
@@ -259,6 +291,9 @@ function fakeFetch(input: unknown, _init?: unknown): Promise<unknown> {
   const raw = typeof input === "string" ? input : String((input as { url?: string }).url ?? input)
   const url = new URL(raw, "http://backend.test")
   requests.push(url.pathname)
+  if (neverAnswered.has(url.pathname)) {
+    return new Promise(() => undefined)
+  }
   if (htmlNotFound.has(url.pathname)) {
     return Promise.resolve({
       ok: false,
@@ -293,8 +328,45 @@ const manager = new DashboardExtensionManager({
   formModule: { customFields: {} },
 } as unknown as ConstructorParameters<typeof DashboardExtensionManager>[0])
 
+type AnyRoute = RouteObject & { lazy?: () => Promise<unknown>; children?: AnyRoute[] }
+
+function collectLazy(routes: AnyRoute[], out: Array<() => Promise<unknown>> = []) {
+  for (const route of routes) {
+    if (route.lazy) out.push(route.lazy)
+    if (route.children) collectLazy(route.children, out)
+  }
+  return out
+}
+
+/** Deep copy of `RouteMap` with the route at `routePath` replaced (negative controls). */
+function withRoute(routes: AnyRoute[], routePath: string, replacement: Partial<AnyRoute>): AnyRoute[] {
+  return routes.map((route) => {
+    if (route.path === routePath) {
+      const { lazy: _lazy, element: _element, Component: _component, ...rest } = route as AnyRoute & {
+        Component?: unknown
+      }
+      return { ...rest, ...replacement } as AnyRoute
+    }
+    return route.children
+      ? ({ ...route, children: withRoute(route.children, routePath, replacement) } as AnyRoute)
+      : route
+  })
+}
+
 beforeAll(async () => {
+  // R-4: the late idle of the first screens was the COLD transform of the lazy
+  // route modules (measured: ~2.5 s of `navigation.state=loading` with zero
+  // queries in flight at load ~6; 12-16 s at load ~18). Importing every lazy
+  // module once here moves that cost out of the per-screen mount budget.
+  // Some route modules call `i18n.t` at module scope, so i18n goes first.
   i18n = await createTestI18n("pl")
+  // `allSettled`: a module that fails to import (e.g. module-scope
+  // `i18n.t` of the panel's own, uninitialised instance) is NOT hidden — it
+  // fails again inside its own screen test and lands there as its outcome.
+  const preload = await Promise.allSettled(
+    collectLazy(RouteMap as AnyRoute[]).map((load) => load())
+  )
+  expect(preload.length).toBeGreaterThan(100)
   vi.stubGlobal("fetch", vi.fn(fakeFetch))
   // `router.navigate` pod jsdom pada na niezgodności `AbortSignal`
   // jsdom/undici; trasy bez loaderów nie czytają `Request` poza konstruktorem.
@@ -336,7 +408,7 @@ beforeAll(async () => {
   Element.prototype.scrollIntoView ??= () => undefined
   Element.prototype.scroll ??= () => undefined
   Element.prototype.scrollTo ??= () => undefined
-})
+}, PRELOAD_TIMEOUT_MS)
 
 afterEach(() => {
   cleanup()
@@ -349,9 +421,46 @@ const settle = async (ms: number) => {
   })
 }
 
-async function mountScreen(screen: Screen): Promise<Result> {
+/**
+ * The screen's own region: the route dialog (drawer/focus modal, portalled to
+ * `document.body`) when one is open, else the shell's `<main>`, else the whole
+ * page (public screens have no shell). The layout shell (sidebar, topbar) is
+ * always in the DOM, so checking the whole container would prove nothing.
+ */
+function outletRegions(container: HTMLElement): Element[] {
+  const dialogs = [...document.querySelectorAll('[role="dialog"]')]
+  if (dialogs.length) return dialogs
+  const main = container.querySelector("main")
+  return [main ?? container]
+}
+
+/** Screen structure: a heading, a table/grid, a form. */
+const CONTENT_SELECTOR =
+  'h1,h2,h3,[role="heading"],table,[role="grid"],[role="application"],form'
+
+/**
+ * Content of the OUTLET, not of the layout: the screen's own region has a
+ * heading/table/form or visible text (a dialog title, an empty-state line, the
+ * 404 page). A spinner or skeleton (SVG / empty blocks) and an empty outlet
+ * have neither — that is `no-content`.
+ */
+function outletHasContent(container: HTMLElement): boolean {
+  return outletRegions(container).some(
+    (region) =>
+      region.querySelector(CONTENT_SELECTOR) !== null ||
+      (region.textContent ?? "").trim().length > 0
+  )
+}
+
+async function mountScreen(
+  screen: Screen,
+  opts: { routes?: AnyRoute[]; budgetMs?: number } = {}
+): Promise<Result> {
   const target = concretePath(screen.route_pattern)
-  const router = createMemoryRouter(RouteMap, { initialEntries: [target] })
+  const router = createMemoryRouter((opts.routes ?? RouteMap) as RouteObject[], {
+    initialEntries: [target],
+  })
+  const budgetMs = opts.budgetMs ?? IDLE_BUDGET_MS
   const errors: string[] = []
   // Render errors are caught by react-router's RenderErrorBoundary and only
   // reported through console.error — collect them as the outcome detail.
@@ -375,18 +484,27 @@ async function mountScreen(screen: Screen): Promise<Result> {
   )
 
   // Lazy route modules + query round-trips: wait until the router is idle and
-  // no query is in flight, bounded so one hanging screen cannot stall the set.
-  for (let i = 0; i < 600; i++) {
+  // no query is in flight. The budget is WALL-CLOCK (an iteration count drifts
+  // with CPU load) and below the test limit, so a hanging screen ends as a
+  // named `not-idle` outcome instead of a test timeout.
+  const isIdle = () =>
+    router.state.initialized &&
+    router.state.navigation.state === "idle" &&
+    queryClient.isFetching() === 0
+  const deadline = Date.now() + budgetMs
+  let polls = 0
+  while (Date.now() < deadline) {
     await settle(25)
-    if (
-      router.state.initialized &&
-      router.state.navigation.state === "idle" &&
-      queryClient.isFetching() === 0 &&
-      i > 3
-    )
-      break
+    polls++
+    if (polls > 3 && isIdle()) break
   }
   await settle(25)
+  const idle = isIdle()
+  const fetching = queryClient
+    .getQueryCache()
+    .findAll({ fetchStatus: "fetching" })
+    .map((q) => JSON.stringify(q.queryKey))
+  const hasContent = outletHasContent(view.container)
 
   const boundary = view.container.querySelector('[data-testid="route-error-boundary"]')
   const routerErrors = router.state.errors
@@ -419,8 +537,21 @@ async function mountScreen(screen: Screen): Promise<Result> {
       detail: `przekierowanie na ${finalPath} zamiast montażu`,
     }
   }
-  if (!view.container.textContent?.trim() && !view.container.querySelector("input,button,form,table,svg")) {
-    return { screen_id: screen.screen_id, path: target, outcome: "error-boundary", detail: "pusty DOM" }
+  if (!idle) {
+    return {
+      screen_id: screen.screen_id,
+      path: target,
+      outcome: "not-idle",
+      detail: `po ${budgetMs} ms: navigation=${router.state.navigation.state}, w toku: ${fetching.join(", ") || "brak"}`.slice(0, 300),
+    }
+  }
+  if (!hasContent) {
+    return {
+      screen_id: screen.screen_id,
+      path: target,
+      outcome: "no-content",
+      detail: "outlet bez nagłówka i tabeli ekranu",
+    }
   }
   return { screen_id: screen.screen_id, path: target, outcome: "mounted", detail: "" }
 }
@@ -438,12 +569,19 @@ const RESULTS: Result[] = []
  * (`GP/e2e/tests/vendor-panel-screen-mount.spec.ts`). Dług nazwany:
  * DW-15-323. Lista jest ZAPADKĄ: ekran spoza niej, który przestaje się
  * montować, czerwieni test; ekran z niej, który zaczyna się montować,
- * jest raportowany w evidence i ma zostać z listy usunięty. Sześć pozycji
- * (m.in. `reviews.index`) montuje się w przebiegu pojedynczym, a pada pod
- * obciążeniem pełnego pakietu — wynik zależny od czasu, więc też dług, nie montaż.
+ * jest raportowany w evidence i ma zostać z listy usunięty.
+ *
+ * Runda fix 1 (R-1/R-4, 2026-11-14): po wstępnym załadowaniu modułów tras
+ * (`beforeAll`) i asercji bezczynności + treści OUTLETU zbiór się zmienił:
+ * `reviews.index` i `settings.regions.[id].countries.add` montują się z
+ * treścią (zdjęte z listy); sześć ekranów wcześniej liczonych jako
+ * `mounted` okazało się fałszywym montażem — pięć stoi na szkielecie
+ * (`no-content`: detal wariantu i `settings.workflows.[id]` nie znajdują encji
+ * w kształcie atrapy), `categories.[id].edit` kończy na granicy błędu.
  */
 const KNOWN_UNMOUNTED_UNDER_FIXTURE = new Set<string>([
   "campaigns.[id].add-promotions",
+  "categories.[id].edit",
   "campaigns.[id].configuration",
   "campaigns.[id].edit",
   "campaigns.[id].edit-budget",
@@ -456,6 +594,10 @@ const KNOWN_UNMOUNTED_UNDER_FIXTURE = new Set<string>([
   "price-lists.[id].products.add",
   "price-lists.[id].products.edit",
   "products.[id].options.[option_id].edit",
+  "products.[id].variants.[variant_id].edit",
+  "products.[id].variants.[variant_id].manage-items",
+  "products.[id].variants.[variant_id].metadata.edit",
+  "products.[id].variants.[variant_id].prices",
   "promotions.[id].[ruleType].edit",
   "promotions.[id].add-to-campaign",
   "promotions.[id].edit",
@@ -463,13 +605,12 @@ const KNOWN_UNMOUNTED_UNDER_FIXTURE = new Set<string>([
   "requests.categories.[id].edit",
   "requests.collections.[id].edit",
   "requests.orders.[id].review",
-  "reviews.index",
   "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].areas",
   "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].edit",
   "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].shipping-option.[so_id].edit",
   "settings.locations.[location_id].fulfillment-set.[fset_id].service-zone.[zone_id].shipping-option.create",
   "settings.locations.[location_id].fulfillment-set.[fset_id].service-zones.create",
-  "settings.regions.[id].countries.add",
+  "settings.workflows.[id]",
 ])
 
 describe("AC1 — montaż każdego ekranu ze zbioru 5.1", () => {
@@ -496,7 +637,7 @@ describe("AC1 — montaż każdego ekranu ze zbioru 5.1", () => {
       expect(result, `${result.screen_id} (${result.path}): ${result.detail}`).toMatchObject({
         outcome: "mounted",
       })
-    }, 20000)
+    }, SCREEN_TEST_TIMEOUT_MS)
   }
 })
 
@@ -511,6 +652,42 @@ describe("AD-35 — kontrola ujemna wykrywacza montażu", () => {
     } finally {
       htmlNotFound.delete("/vendor/orders")
     }
+  }, 20000)
+
+  it("ekran wiecznie ładujący (zapytanie bez odpowiedzi) NIE zalicza montażu — wynik not-idle", async () => {
+    const screen = SCREENS.find((s) => s.screen_id === "orders.index")
+    expect(screen).toBeDefined()
+    neverAnswered.add("/vendor/orders")
+    try {
+      const result = await mountScreen(screen!, { budgetMs: 1500 })
+      expect(result.outcome).toBe("not-idle")
+    } finally {
+      neverAnswered.delete("/vendor/orders")
+    }
+  }, 20000)
+
+  it("ekran z pustym outletem (powłoka w DOM, ekran renderuje null) NIE zalicza — wynik no-content", async () => {
+    const screen = SCREENS.find((s) => s.screen_id === "dashboard")
+    expect(screen).toBeDefined()
+    const routes = withRoute(RouteMap as AnyRoute[], "dashboard", { Component: () => null })
+    const result = await mountScreen(screen!, { routes })
+    expect(result.outcome).toBe("no-content")
+  }, 20000)
+
+  it("ekran zatrzymany na szkielecie (bez zapytań) NIE zalicza — wynik no-content", async () => {
+    const screen = SCREENS.find((s) => s.screen_id === "dashboard")
+    expect(screen).toBeDefined()
+    const routes = withRoute(RouteMap as AnyRoute[], "dashboard", {
+      Component: () => <div data-testid="skeleton" className="animate-pulse" />,
+    })
+    const result = await mountScreen(screen!, { routes })
+    expect(result.outcome).toBe("no-content")
+  }, 20000)
+
+  it("kontrola dodatnia: ten sam ekran z realnym modułem zalicza montaż", async () => {
+    const screen = SCREENS.find((s) => s.screen_id === "dashboard")
+    const result = await mountScreen(screen!)
+    expect(result.outcome).toBe("mounted")
   }, 20000)
 })
 
