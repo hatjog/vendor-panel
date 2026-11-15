@@ -1118,3 +1118,89 @@ function assertNoRawKeysNorMissingSentinel(container: HTMLElement) {
 
 // Utrzymuje wywołanie w użyciu także wtedy, gdy powyższe testy się zmienią.
 export { assertNoRawKeysNorMissingSentinel }
+
+describe("Story 5.7 — ślad realizacji po kodzie i korekta pomyłkowej realizacji", () => {
+  const TRAIL_AT = "2026-11-15T10:00:00.000Z"
+
+  it("AC1 — po wyszukaniu kodu widać ślad: data, aktor, rynek (po polsku)", async () => {
+    fetchQuery.mockResolvedValueOnce({
+      voucher: voucherView("claimed"),
+      redemption_trail: [
+        { kind: "redemption", at: TRAIL_AT, actor: "own_seller", market_id: "bonbeauty", redemption_market_id: "bonbeauty" },
+      ],
+    })
+    const user = userEvent.setup()
+    const { container } = renderScreen()
+    await lookUp(user)
+
+    const trail = await screen.findByTestId("voucher-redemption-trail")
+    expect(within(trail).getByText("Historia realizacji")).toBeTruthy()
+    const entries = within(trail).getAllByTestId("voucher-trail-entry")
+    expect(entries).toHaveLength(1)
+    const text = entries[0].textContent ?? ""
+    expect(text).toMatch(/^Realizacja: /)
+    expect(text).toContain("Twój salon")
+    expect(text).toContain("rynek bonbeauty")
+    expect(text).toMatch(/2026/)
+    assertNoRawKeysNorMissingSentinel(container)
+  })
+
+  it("AC2 — korekta woła reverse-redemption z sesją salonu, dopisuje wpis i odblokowuje realizację", async () => {
+    fetchQuery
+      .mockResolvedValueOnce({
+        voucher: voucherView("claimed"),
+        redemption_trail: [{ kind: "redemption", at: TRAIL_AT, actor: "own_seller", market_id: "bonbeauty" }],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: "REDEMPTION_REVERSED",
+        correction: { corrected_at: "2026-11-15T10:05:00.000Z", actor: "own_seller", market_id: "bonbeauty" },
+      })
+    const user = userEvent.setup()
+    renderScreen()
+    await lookUp(user)
+
+    await user.click(await screen.findByRole("button", { name: "Cofnij pomyłkową realizację" }))
+
+    expect(fetchQuery).toHaveBeenLastCalledWith(
+      `/vendor/vouchers/${encodeURIComponent(CODE)}/reverse-redemption`,
+      expect.objectContaining({ method: "POST", sellerId: "sel_1" }),
+    )
+    const entries = await screen.findAllByTestId("voucher-trail-entry")
+    expect(entries.map((e) => (e.textContent ?? "").split(":")[0])).toEqual([
+      "Realizacja",
+      "Korekta realizacji",
+    ])
+    expect(screen.getByTestId("voucher-correction-done").textContent).toContain(
+      "Realizacja została cofnięta",
+    )
+    // Voucher znów realizowalny (D-36): wraca przycisk realizacji, znika korekta.
+    expect(screen.getByRole("button", { name: "Oznacz jako zrealizowany" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Cofnij pomyłkową realizację" })).toBeNull()
+  })
+
+  it("AC2 — odmowa korekty pokazuje polskie zdanie z klucza, nie surowy message", async () => {
+    fetchQuery
+      .mockResolvedValueOnce({
+        voucher: voucherView("claimed"),
+        redemption_trail: [{ kind: "redemption", at: TRAIL_AT, actor: "own_seller", market_id: "bonbeauty" }],
+      })
+      .mockRejectedValueOnce(
+        new VoucherApiError(409, "REDEMPTION_ALREADY_REVERSED", "already_reversed", "surowy komunikat serwera"),
+      )
+    const user = userEvent.setup()
+    renderScreen()
+    await lookUp(user)
+    await user.click(await screen.findByRole("button", { name: "Cofnij pomyłkową realizację" }))
+
+    const refusal = await screen.findByTestId("voucher-correction-refusal")
+    expect(refusal.textContent).toBe("Ta realizacja została już cofnięta.")
+    expect(refusal.textContent).not.toContain("surowy")
+  })
+
+  it("DW-15-335 — odmowa stanu uprawnienia `entitlement_not_redeemable` ma polskie zdanie", () => {
+    expect(i18n.t("voucher.redeem.refused.entitlement_not_redeemable")).toBe(
+      "Tego vouchera nie można zrealizować w jego obecnym stanie. Zgłoś to wsparciu, podając kod vouchera.",
+    )
+  })
+})

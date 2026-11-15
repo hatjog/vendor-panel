@@ -70,6 +70,8 @@ export type RedeemRefusalReason = keyof typeof REDEEM_REFUSAL_I18N_KEYS
  */
 export const ENTITLEMENT_REFUSAL_I18N_KEYS = {
   not_yet_active: "voucher.redeem.refused.not_yet_active",
+  // v1.16.0 Story 5.7 (DW-15-335): pozostałe stany uprawnienia spoza allow-listy.
+  entitlement_not_redeemable: "voucher.redeem.refused.entitlement_not_redeemable",
 } as const
 
 export type EntitlementRefusalReason = keyof typeof ENTITLEMENT_REFUSAL_I18N_KEYS

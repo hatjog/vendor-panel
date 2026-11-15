@@ -77,8 +77,8 @@ import {
 } from "../../i18n/voucher-state-vocabulary"
 import { newIdempotencyKey, voucherFetch } from "../../lib/client/voucher-client"
 import {
-  buildRefusalSentence, refusalFromError,
-  type PanelRefusal, type VoucherRedemptionFact,
+  buildRefusalSentence, refusalFromError, readRedemptionTrail, VoucherRedemptionTrail,
+  type PanelRefusal, type VoucherRedemptionFact, type RedemptionTrailEntry,
 } from "./voucher-refusal"
 
 type VendorVoucherView = {
@@ -175,7 +175,7 @@ type RedeemErrorKey =
 type LookupState =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "found"; voucher: VendorVoucherView }
+  | { kind: "found"; voucher: VendorVoucherView; trail?: RedemptionTrailEntry[] } // Story 5.7 AC1: ślad realizacji
   | { kind: "not_found" }
   | { kind: "error"; messageKey: LookupErrorKey }
 
@@ -415,7 +415,7 @@ export const VoucherRedeem = () => {
         // znaleziony voucher. Generowanie go w `onRedeem` dawałoby nowy klucz
         // na każde kliknięcie, czyli dokładnie zachowanie sprzed 5.8.
         idempotencyKeyRef.current = newIdempotencyKey()
-        setLookup({ kind: "found", voucher: data.voucher as VendorVoucherView })
+        setLookup({ kind: "found", voucher: data.voucher as VendorVoucherView, trail: readRedemptionTrail(data.redemption_trail) })
       } else {
         setLookup({ kind: "not_found" })
       }
@@ -662,6 +662,27 @@ export const VoucherRedeem = () => {
               {t("voucher.redeem.already_claimed")}
             </div>
           )}
+
+          {/*
+            v1.16.0 Story 5.7 (AC1/AC2, D-36): ślad realizacji po kodzie i korekta
+            pomyłkowej realizacji. Po korekcie voucher wraca do stanu realizowalnego,
+            a nowa realizacja dostaje NOWY klucz idempotencji (to nowa akcja).
+          */}
+          <VoucherRedemptionTrail
+            code={lookup.voucher.code}
+            sellerId={sellerId}
+            status={lookup.voucher.status}
+            trail={lookup.trail ?? []}
+            formatWhen={(iso) => formatWhen(iso, i18n.language)}
+            onCorrected={(entry) => {
+              idempotencyKeyRef.current = newIdempotencyKey()
+              setLookup({
+                kind: "found",
+                voucher: { ...lookup.voucher, status: "idle" },
+                trail: [...(lookup.trail ?? []), entry],
+              })
+            }}
+          />
 
           {/*
             Stan spoza allow-listy (`withdrawn`, `expired`) mówi POWÓD ZANIM

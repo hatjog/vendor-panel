@@ -195,6 +195,9 @@
                 "not_yet_active": {
                   "type": "string"
                 },
+                "entitlement_not_redeemable": {
+                  "type": "string"
+                },
                 "already_redeemed_detail": {
                   "type": "string"
                 },
@@ -215,6 +218,7 @@
                 "refunded",
                 "not_redeemable",
                 "not_yet_active",
+                "entitlement_not_redeemable",
                 "already_redeemed_detail",
                 "already_redeemed_when",
                 "redeemed_by_own_seller",
@@ -254,6 +258,59 @@
             },
             "reset": {
               "type": "string"
+            },
+            "trail_title": {
+              "type": "string"
+            },
+            "trail_redemption": {
+              "type": "string"
+            },
+            "trail_correction": {
+              "type": "string"
+            },
+            "trail_refund_reversal": {
+              "type": "string"
+            },
+            "trail_entry": {
+              "type": "string"
+            },
+            "trail_actor_own_seller": {
+              "type": "string"
+            },
+            "trail_actor_unknown": {
+              "type": "string"
+            },
+            "correct_action": {
+              "type": "string"
+            },
+            "correcting": {
+              "type": "string"
+            },
+            "corrected": {
+              "type": "string"
+            },
+            "correction_failed": {
+              "type": "string"
+            },
+            "correction_refused": {
+              "type": "object",
+              "properties": {
+                "already_reversed": {
+                  "type": "string"
+                },
+                "not_redeemed": {
+                  "type": "string"
+                },
+                "not_correctable": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "already_reversed",
+                "not_redeemed",
+                "not_correctable"
+              ],
+              "additionalProperties": false
             },
             "error": {
               "type": "object",
@@ -314,6 +371,18 @@
             "details_claimed_at",
             "audit_reference",
             "reset",
+            "trail_title",
+            "trail_redemption",
+            "trail_correction",
+            "trail_refund_reversal",
+            "trail_entry",
+            "trail_actor_own_seller",
+            "trail_actor_unknown",
+            "correct_action",
+            "correcting",
+            "corrected",
+            "correction_failed",
+            "correction_refused",
             "error"
           ],
           "additionalProperties": false

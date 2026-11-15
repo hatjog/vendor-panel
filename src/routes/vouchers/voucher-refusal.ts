@@ -21,6 +21,14 @@ import {
 
 export type { VoucherRedemptionFact }
 
+// v1.16.0 Story 5.7: ślad realizacji i korekta — re-eksport, żeby import ekranu
+// został w tej samej linii (inwentarz tras kotwiczony liniami, DW-15-294).
+export {
+  readRedemptionTrail,
+  VoucherRedemptionTrail,
+  type RedemptionTrailEntry,
+} from "./voucher-trail"
+
 /**
  * Odmowa rozpoznana przez panel. Trzy osie:
  *   - `voucher`     — powód stanu vouchera z kontraktu v3 (ADR-209),
@@ -74,6 +82,8 @@ const REFUSAL_FALLBACK: Record<RefusalReason | EntitlementRefusalReason, string>
   not_redeemable:
     "Stan tego vouchera nie pozwala na realizację. Zgłoś to wsparciu, podając kod vouchera.",
   not_yet_active: "Ten voucher nie jest jeszcze aktywny, więc nie można go zrealizować.",
+  entitlement_not_redeemable:
+    "Tego vouchera nie można zrealizować w jego obecnym stanie. Zgłoś to wsparciu, podając kod vouchera.",
 }
 
 export const UNKNOWN_REFUSAL_FALLBACK =
