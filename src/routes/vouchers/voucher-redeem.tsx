@@ -674,11 +674,13 @@ export const VoucherRedeem = () => {
             status={lookup.voucher.status}
             trail={lookup.trail ?? []}
             formatWhen={(iso) => formatWhen(iso, i18n.language)}
-            onCorrected={(entry) => {
+            onCorrected={(entry, voucherStatus) => {
               idempotencyKeyRef.current = newIdempotencyKey()
+              // Status kodu z odpowiedzi backendu (idle albo consent_pending),
+              // nie stale `idle`; brak pola = bez zgadywania, status zostaje.
               setLookup({
                 kind: "found",
-                voucher: { ...lookup.voucher, status: "idle" },
+                voucher: { ...lookup.voucher, status: voucherStatus ?? lookup.voucher.status },
                 trail: [...(lookup.trail ?? []), entry],
               })
             }}

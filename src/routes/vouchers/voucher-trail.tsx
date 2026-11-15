@@ -74,7 +74,12 @@ export const VoucherRedemptionTrail = ({
   status: string
   trail: RedemptionTrailEntry[]
   formatWhen: (iso: string) => string
-  onCorrected: (entry: RedemptionTrailEntry) => void
+  /**
+   * `voucherStatus` = stan kodu przywrócony przez backend (`voucher_status`
+   * z odpowiedzi 200: `idle` albo `consent_pending`); `null`, gdy odpowiedź
+   * go nie niesie — wtedy ekran NIE zgaduje (runda fix 1, LOW panel).
+   */
+  onCorrected: (entry: RedemptionTrailEntry, voucherStatus: string | null) => void
 }) => {
   const { t } = useTranslation()
   const [state, setState] = useState<CorrectionState>({ kind: "idle" })
@@ -95,12 +100,15 @@ export const VoucherRedemptionTrail = ({
       )
       const correction = (data?.correction ?? {}) as Record<string, unknown>
       setState({ kind: "done" })
-      onCorrected({
-        kind: "correction",
-        at: typeof correction.corrected_at === "string" ? correction.corrected_at : new Date().toISOString(),
-        actor: "own_seller",
-        market_id: typeof correction.market_id === "string" ? correction.market_id : "",
-      })
+      onCorrected(
+        {
+          kind: "correction",
+          at: typeof correction.corrected_at === "string" ? correction.corrected_at : new Date().toISOString(),
+          actor: "own_seller",
+          market_id: typeof correction.market_id === "string" ? correction.market_id : "",
+        },
+        typeof data?.voucher_status === "string" ? data.voucher_status : null,
+      )
     } catch (err) {
       const reason = err instanceof VoucherApiError ? err.reason : null
       if (reason && Object.prototype.hasOwnProperty.call(CORRECTION_REFUSAL_KEYS, reason)) {

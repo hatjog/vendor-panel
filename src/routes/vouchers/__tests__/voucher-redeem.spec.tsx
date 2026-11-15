@@ -1154,6 +1154,7 @@ describe("Story 5.7 — ślad realizacji po kodzie i korekta pomyłkowej realiza
       .mockResolvedValueOnce({
         ok: true,
         status: "REDEMPTION_REVERSED",
+        voucher_status: "idle",
         correction: { corrected_at: "2026-11-15T10:05:00.000Z", actor: "own_seller", market_id: "bonbeauty" },
       })
     const user = userEvent.setup()
@@ -1177,6 +1178,32 @@ describe("Story 5.7 — ślad realizacji po kodzie i korekta pomyłkowej realiza
     // Voucher znów realizowalny (D-36): wraca przycisk realizacji, znika korekta.
     expect(screen.getByRole("button", { name: "Oznacz jako zrealizowany" })).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Cofnij pomyłkową realizację" })).toBeNull()
+  })
+
+  it("runda fix 1 — status kodu po korekcie pochodzi z odpowiedzi (consent_pending), nie stałe idle", async () => {
+    fetchQuery
+      .mockResolvedValueOnce({
+        voucher: voucherView("claimed"),
+        redemption_trail: [{ kind: "redemption", at: TRAIL_AT, actor: "own_seller", market_id: "bonbeauty" }],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: "REDEMPTION_REVERSED",
+        voucher_status: "consent_pending",
+        correction: { corrected_at: "2026-11-15T10:05:00.000Z", actor: "own_seller", market_id: "bonbeauty" },
+      })
+    const user = userEvent.setup()
+    renderScreen()
+    await lookUp(user)
+    const claimedLabel = screen.getByTestId("voucher-status-label").textContent
+    await user.click(await screen.findByRole("button", { name: "Cofnij pomyłkową realizację" }))
+    await screen.findByTestId("voucher-correction-done")
+
+    const label = screen.getByTestId("voucher-status-label").textContent ?? ""
+    expect(label).not.toBe(claimedLabel)
+    expect(label).toBe(i18n.t(VOUCHER_STATUS_I18N_KEYS.consent_pending))
+    expect(label).not.toBe(i18n.t(VOUCHER_STATUS_I18N_KEYS.idle))
+    expect(screen.getByRole("button", { name: "Oznacz jako zrealizowany" })).toBeTruthy()
   })
 
   it("AC2 — odmowa korekty pokazuje polskie zdanie z klucza, nie surowy message", async () => {
