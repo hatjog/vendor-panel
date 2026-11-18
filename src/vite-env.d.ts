@@ -4,6 +4,8 @@ interface ImportMetaEnv {
   readonly VITE_MEDUSA_ADMIN_BACKEND_URL: string
   readonly VITE_MEDUSA_STOREFRONT_URL: string
   readonly VITE_MEDUSA_V2: "true" | "false"
+  /** Vite built-in (vite/client reference above is commented out). */
+  readonly DEV: boolean
 }
 
 interface ImportMeta {
